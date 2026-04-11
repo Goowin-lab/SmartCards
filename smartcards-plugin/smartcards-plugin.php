@@ -1,0 +1,2266 @@
+<?php
+/**
+ * Plugin Name: SmartCards
+ * Plugin URI: https://goowin.co
+ * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
+ * Version: 2.9.5
+ * Author: Goowin
+ * Author URI: https://goowin.co
+ * Text Domain: smartcards
+ * Domain Path: /languages
+ */
+
+// Asegurarse de que no se acceda directamente al archivo.
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+// Crear el rol personalizado "customer" (Cliente)
+function sc_add_customer_role() {
+    add_role(
+        'customer', // Nombre interno del rol
+        'Cliente',  // Nombre visible en el admin
+        array(
+            'read' => true,       // Puede leer contenido
+            'edit_posts' => false, // No puede editar posts
+            'delete_posts' => false // No puede borrar posts
+        )
+    );
+}
+register_activation_hook( __FILE__, 'sc_add_customer_role' );
+
+// Cambiar el rol por defecto al activar el plugin
+function sc_set_default_role_to_customer() {
+    update_option( 'default_role', 'customer' );
+}
+register_activation_hook( __FILE__, 'sc_set_default_role_to_customer' );
+
+/**
+ * Crear tabla para eventos de analíticas.
+ */
+function sc_create_events_table() {
+    global $wpdb;
+
+    $table_name      = $wpdb->prefix . 'smartcards_events';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+    $sql = "CREATE TABLE {$table_name} (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      profile_id BIGINT UNSIGNED NOT NULL,
+      owner_user_id BIGINT UNSIGNED NOT NULL,
+      event_type VARCHAR(32) NOT NULL,
+      button_key VARCHAR(64) NULL,
+      url TEXT NULL,
+      ip_hash CHAR(64) NULL,
+      ua_hash CHAR(64) NULL,
+      created_at DATETIME NOT NULL,
+      PRIMARY KEY  (id),
+      KEY profile_event (profile_id, event_type),
+      KEY owner_user (owner_user_id),
+      KEY created_at (created_at)
+    ) {$charset_collate};";
+
+    dbDelta( $sql );
+}
+register_activation_hook( __FILE__, 'sc_create_events_table' );
+
+// Cambiar el rol al registrar usuarios manualmente o programáticamente
+function sc_register_user_as_customer( $user_id ) {
+    $user = new WP_User( $user_id );
+    $user->set_role( 'customer' );
+}
+add_action( 'user_register', 'sc_register_user_as_customer' );
+
+function sc_login_redirect( $redirect_to, $request, $user ) {
+    // Verifica si el usuario tiene el rol 'customer'
+    if ( isset( $user->roles ) && in_array( 'customer', $user->roles ) ) {
+        return home_url( '/dashboard/' ); // Cambia esta URL por la de tu Dashboard
+    }
+    return $redirect_to; // Si no cumple, redirige al destino predeterminado
+}
+add_filter( 'login_redirect', 'sc_login_redirect', 10, 3 );
+
+// Definir constantes
+define('SMARTCARDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('SMARTCARDS_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+global $sc_fonts;
+$sc_fonts = [
+    'Inter',
+    'Roboto',
+    'Poppins',
+    'Open Sans',
+    'Montserrat',
+    'Lato',
+    'Nunito',
+    'Source Sans Pro',
+    'Raleway',
+    'Ubuntu',
+    'Work Sans',
+    'DM Sans',
+    'Outfit',
+    'Plus Jakarta Sans',
+    'Rubik',
+    'Mulish',
+    'Quicksand',
+    'Manrope',
+    'Merriweather',
+    'Playfair Display',
+    'Libre Baskerville',
+    'Lora',
+    'Cormorant Garamond',
+    'Pacifico',
+    'Dancing Script',
+    'Great Vibes',
+    'Bebas Neue',
+    'Oswald',
+    'Bangers',
+];
+
+if ( ! function_exists( 'sc_get_available_fonts' ) ) {
+    function sc_get_available_fonts() {
+        global $sc_fonts;
+
+        return is_array( $sc_fonts ) ? $sc_fonts : [ 'Montserrat' ];
+    }
+}
+
+if ( ! function_exists( 'sc_clean_font_name' ) ) {
+    function sc_clean_font_name( $font_raw ) {
+        $font_raw = trim( (string) $font_raw );
+        $font_key = strtolower( preg_replace( '/[^a-z0-9]+/', '', $font_raw ) );
+
+        foreach ( sc_get_available_fonts() as $font ) {
+            if ( stripos( $font_raw, $font ) !== false ) {
+                return $font;
+            }
+
+            $normalized_font = strtolower( preg_replace( '/[^a-z0-9]+/', '', $font ) );
+            if ( $normalized_font !== '' && $font_key !== '' && strpos( $font_key, $normalized_font ) !== false ) {
+                return $font;
+            }
+        }
+
+        return 'Montserrat';
+    }
+}
+
+if ( ! function_exists( 'sc_sanitize_font_family_name' ) ) {
+    function sc_sanitize_font_family_name( $font ) {
+        return sc_clean_font_name( $font );
+    }
+}
+
+if ( ! function_exists( 'sc_format_google_font' ) ) {
+    function sc_format_google_font( $font ) {
+        return str_replace( ' ', '+', trim( sc_clean_font_name( $font ) ) );
+    }
+}
+
+if ( ! function_exists( 'sc_get_font_stack' ) ) {
+    function sc_get_font_stack( $font ) {
+        $font = sc_clean_font_name( $font );
+
+        return '"' . addcslashes( $font, "\\\"" ) . '", "Montserrat", sans-serif';
+    }
+}
+
+if ( ! function_exists( 'sc_get_google_font_weights' ) ) {
+    function sc_get_google_font_weights( $font ) {
+        $font = sc_clean_font_name( $font );
+
+        $font_weights = [
+            'Inter' => '300;400;600;700',
+            'Roboto' => '300;400;600;700',
+            'Poppins' => '300;400;600;700',
+            'Open Sans' => '300;400;600;700',
+            'Montserrat' => '300;400;600;700',
+            'Lato' => '300;400;700',
+            'Nunito' => '300;400;600;700',
+            'Source Sans Pro' => '300;400;600;700',
+            'Raleway' => '300;400;600;700',
+            'Ubuntu' => '300;400;700',
+            'Work Sans' => '300;400;600;700',
+            'DM Sans' => '300;400;600;700',
+            'Outfit' => '300;400;600;700',
+            'Plus Jakarta Sans' => '300;400;600;700',
+            'Rubik' => '300;400;600;700',
+            'Mulish' => '300;400;600;700',
+            'Quicksand' => '300;400;600;700',
+            'Manrope' => '300;400;600;700',
+            'Merriweather' => '300;400;700',
+            'Playfair Display' => '400;600;700',
+            'Libre Baskerville' => '400;700',
+            'Lora' => '400;600;700',
+            'Cormorant Garamond' => '300;400;600;700',
+            'Pacifico' => '',
+            'Dancing Script' => '400;600;700',
+            'Great Vibes' => '',
+            'Bebas Neue' => '',
+            'Oswald' => '300;400;600;700',
+            'Bangers' => '',
+        ];
+
+        return isset( $font_weights[ $font ] ) ? $font_weights[ $font ] : '300;400;600;700';
+    }
+}
+
+if ( ! function_exists( 'sc_get_google_font_url' ) ) {
+    function sc_get_google_font_url( $font ) {
+        $font_name = sc_format_google_font( $font );
+        $weights   = sc_get_google_font_weights( $font );
+
+        if ( $weights === '' ) {
+            return 'https://fonts.googleapis.com/css2?family=' . $font_name . '&display=swap';
+        }
+
+        return 'https://fonts.googleapis.com/css2?family=' . $font_name . ':wght@' . $weights . '&display=swap';
+    }
+}
+
+if ( ! function_exists( 'sc_get_social_icon_markup' ) ) {
+    function sc_get_social_icon_markup( $icon_filename, $label = '', $allow_inline_svg = false ) {
+        $candidates = [
+            [
+                'path' => WP_CONTENT_DIR . '/uploads/2026/03/' . $icon_filename,
+                'url'  => content_url( 'uploads/2026/03/' . $icon_filename ),
+            ],
+            [
+                'path' => WP_CONTENT_DIR . '/uploads/2025/02/' . $icon_filename,
+                'url'  => content_url( 'uploads/2025/02/' . $icon_filename ),
+            ],
+        ];
+
+        foreach ( $candidates as $candidate ) {
+            if ( ! file_exists( $candidate['path'] ) || ! is_readable( $candidate['path'] ) ) {
+                continue;
+            }
+
+            if ( $allow_inline_svg && strtolower( pathinfo( $candidate['path'], PATHINFO_EXTENSION ) ) === 'svg' ) {
+                $svg = file_get_contents( $candidate['path'] );
+                if ( false !== $svg && '' !== trim( $svg ) ) {
+                    $svg = preg_replace( '/<svg\b/', '<svg class="icon-social"', $svg, 1 );
+                    return $svg;
+                }
+            }
+
+            return sprintf(
+                '<img src="%1$s" alt="%2$s" loading="eager" fetchpriority="high" decoding="sync">',
+                esc_url( $candidate['url'] ),
+                esc_attr( $label )
+            );
+        }
+
+        return sprintf(
+            '<img src="%1$s" alt="%2$s" loading="eager" fetchpriority="high" decoding="sync">',
+            esc_url( content_url( 'uploads/2025/02/' . $icon_filename ) ),
+            esc_attr( $label )
+        );
+    }
+}
+
+
+// Requerir archivos de lógica
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/shortcodes.php';
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/procesar-formulario.php';
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/admin-panel.php';
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/smartcards-apple.php'; // ← SIWA endpoint
+
+//endpoint OTP acceso con un código de verificación
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/otp-endpoints.php';
+
+// Endpoint /smartcards/v1/me — devuelve datos del usuario autenticado via JWT
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest-me.php';
+
+// Endpoint /smartcards/v1/create-card - crear Smart Card
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/create-card.php';
+
+// Cargar API de créditos SmartCards
+require_once plugin_dir_path(__FILE__) . 'includes/api-credits.php';
+
+// Carga el endpoint de Magic Link
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/smartcards-magic.php';
+
+// Custom Post Type: Smart Card
+// Define la estructura, visibilidad pública y rutas (/card/slug)
+// Base para la creación de perfiles desde la App y futuras integraciones
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/smartcards-post-type.php';
+
+// Endpoint publicar Smart Card
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/publish-card.php';
+
+// Endpoint listar Smart Cards del usuario
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/my-cards.php';
+
+// Endpoint REST: obtener Smart Card por ID (precargar wizard)
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/get-card.php';
+
+// Endpoint REST para crear perfiles públicos desde la App (React Native)
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest-profile-create.php';
+
+// REST: subir imágenes (Paso 6)
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/upload-image.php';
+
+// REST: cancelar perfil (borrar borrador y recursos)
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/delete-draft.php';
+
+add_filter('the_content', function ($content) {
+    if (!is_singular('smartcards')) {
+        return $content;
+    }
+
+    if (is_admin()) {
+        return $content;
+    }
+
+    $post_id = get_the_ID();
+    if (!$post_id) {
+        return $content;
+    }
+
+    $cached_html = (string) get_post_meta($post_id, 'sc_cached_html', true);
+    if ($cached_html !== '') {
+        return $cached_html;
+    }
+
+    return $content;
+}, 999);
+
+
+
+
+
+
+/* =========================================================
+ * DESCARGA SEGURA DE VCF (WEB + APP)
+ * ========================================================= */
+add_action('init', function () {
+  add_rewrite_rule(
+    '^descargar-vcf/([0-9]+)/?$',
+    'index.php?descargar_vcf=1&user_id=$matches[1]',
+    'top'
+  );
+});
+
+add_filter('query_vars', function ($vars) {
+  $vars[] = 'descargar_vcf';
+  $vars[] = 'user_id';
+  return $vars;
+});
+
+add_action('template_redirect', function () {
+  if (!get_query_var('descargar_vcf')) return;
+
+  $user_id = (int) get_query_var('user_id');
+  if (!$user_id) wp_die('Usuario inválido');
+
+  $vcf_attachment_id = get_user_meta($user_id, 'smartcards_vcf_attachment_id', true);
+  if (!$vcf_attachment_id) wp_die('VCF no encontrado');
+
+  $file_path = get_attached_file($vcf_attachment_id);
+  if (!file_exists($file_path)) wp_die('Archivo no existe');
+
+header('Content-Type: text/vcard; charset=utf-8');
+$nombre   = get_user_meta($user_id, 'smartcards_nombre', true);
+$apellido = get_user_meta($user_id, 'smartcards_apellido', true);
+
+// Fallback seguro
+if (empty($nombre) && empty($apellido)) {
+    $filename = 'contacto.vcf';
+} else {
+    $filename = sanitize_file_name($nombre . '-' . $apellido . '.vcf');
+}
+
+header('Content-Disposition: attachment; filename="' . $filename . '"');
+header('Content-Length: ' . filesize($file_path));
+
+// 🔥 HEADERS ANTI-CACHÉ (clave para iOS)
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+
+readfile($file_path);
+exit;
+});
+
+// Cargar estilos y scripts
+function smartcards_enqueue_assets() {
+    wp_enqueue_style('smartcards-styles', SMARTCARDS_PLUGIN_URL . 'includes/assets/css/smartcards-styles.css', [], '1.0');
+
+    // Scripts QR y frontend
+    wp_enqueue_script(
+        'qr-code-styling',
+        'https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js',
+        [],
+        '1.5.0',
+        true
+    );
+
+    wp_enqueue_script(
+        'smartcards-frontend',
+        SMARTCARDS_PLUGIN_URL . 'includes/assets/js/smartcards-frontend.js',
+        ['qr-code-styling'],
+        '1.0',
+        true
+    );
+    // ---- Datos del usuario para OneSignal (External ID + Tags) ----
+  $uid = get_current_user_id();
+
+  // Créditos
+  $credits = (int) get_user_meta($uid, 'smartcards_credits', true);
+
+  // País (WooCommerce o meta propio)
+  $country = '';
+  if ($uid) {
+    $country = get_user_meta($uid, 'billing_country', true);          // Woo
+    if (!$country) $country = get_user_meta($uid, 'country', true);   // meta propio (si lo usas)
+  }
+  $country = $country ? strtoupper($country) : '';
+
+  // Idioma (dos letras)
+  $lang = substr(get_locale(), 0, 2);
+
+  // Estado del perfil (ajústalo a tu flujo)
+  $profile_status = get_user_meta($uid, 'sc_profile_status', true);
+  if (!$profile_status) { $profile_status = 'pending'; } // pending | approved | created
+
+  // Pasa datos al JS del front
+  wp_localize_script('smartcards-frontend', 'smartcardsUser', [
+    'id'             => $uid,
+    'credits'        => $credits,
+    'country'        => $country,            // ej. CO, MX, US
+    'lang'           => strtolower($lang),   // ej. es, en
+    'profile_status' => $profile_status,
+  ]);
+}
+
+add_action('wp_enqueue_scripts', 'smartcards_enqueue_assets');
+
+add_action( 'wp_enqueue_scripts', function() {
+    $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+
+    if ( strpos( $request_uri, '/card/' ) === false ) {
+        return;
+    }
+
+    wp_dequeue_script( 'wc-cart-fragments' );
+    wp_dequeue_script( 'woocommerce' );
+    wp_dequeue_script( 'yay-currency' );
+    wp_dequeue_script( 'mailchimp' );
+    wp_dequeue_script( 'wp-emoji-release' );
+}, 100 );
+
+// Encolar scripts JavaScript (QRCodeStyling y Frontend personalizado)
+function smartcards_enqueue_scripts() {
+    // QR Styling library (QRCodeStyling desde CDN)
+    wp_enqueue_script(
+        'qr-code-styling',
+        'https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js',
+        [],
+        '1.5.0',
+        true
+    );
+
+    // Tu JavaScript personalizado
+    wp_enqueue_script(
+        'smartcards-frontend',
+        SMARTCARDS_PLUGIN_URL . 'includes/assets/js/smartcards-frontend.js',
+        ['qr-code-styling'],
+        '1.0',
+        true
+    );
+}
+
+
+// ======================================================
+// Ya NO asignamos crédito al registro de usuario
+// ======================================================
+
+// Desactivamos esta función para que NO sume créditos al registrarse:
+/*
+function asignar_creditos_nuevo_usuario( $user_id ) {
+    update_user_meta( $user_id, 'smartcards_credits', 1 );
+}
+add_action( 'user_register', 'asignar_creditos_nuevo_usuario' );
+*/
+
+// ======================================================
+// Función que sí asigna créditos cuando el pedido se completa
+// ======================================================
+
+/**
+ * Validar automáticamente código de crédito y guardar empresa al registrar usuario con WPForms.
+ */
+function smartcards_registro_personalizado_wpforms($user_id, $fields, $form_data) {
+
+    // IDs reales de tus campos en WPForms
+    $empresa = sanitize_text_field($fields['7']['value']);
+    $codigo_credito_ingresado = sanitize_text_field($fields['7']['value']);
+
+    if (!empty($empresa)) {
+        update_user_meta($user_id, 'smartcards_empresa', $empresa);
+    }
+
+    if ($codigo_credito_ingresado) {
+        $codigo_credito_ingresado = strtoupper(trim($codigo_credito_ingresado));
+        $datos_codigo_credito = get_option('smart_codigo_credito_' . $codigo_credito_ingresado);
+
+        if ($datos_codigo_credito) {
+            $usos_actuales = (int)$datos_codigo_credito['usos_actuales'];
+            $usos_maximos  = (int)$datos_codigo_credito['usos_maximos'];
+            $creditos      = (int)$datos_codigo_credito['creditos'];
+
+            // Validación clave: comprobar si ya llegó al límite de usos máximos
+            if ($usos_actuales < $usos_maximos) {
+                // Asignar solo 1 crédito por registro
+                update_user_meta($user_id, 'smartcards_credits', 1);
+
+                // Incrementar usos del código automáticamente
+                $datos_codigo_credito['usos_actuales']++;
+                update_option('smart_codigo_credito_' . $codigo_credito_ingresado, $datos_codigo_credito);
+            } else {
+                // Si el código llegó al límite, asignar 0 créditos o manejar como prefieras
+                update_user_meta($user_id, 'smartcards_credits', 0);
+            }
+        } else {
+            // Código no válido, asignar 0 créditos
+            update_user_meta($user_id, 'smartcards_credits', 0);
+        }
+    }
+}
+
+add_action('wpforms_user_registered', 'smartcards_registro_personalizado_wpforms', 10, 3);
+
+function smartcards_ocultar_barra_wp() {
+    if ( !current_user_can('administrator') && !is_admin() ) {
+        show_admin_bar(false);
+    }
+}
+add_action('after_setup_theme', 'smartcards_ocultar_barra_wp');
+
+// === PASO 1: Página Administrativa === //
+
+add_action('admin_menu', 'smartcards_registrar_pagina_admin');
+
+function smartcards_registrar_pagina_admin() {
+    add_menu_page(
+        'Notificaciones Smart Cards',
+        'Notificaciones Smart Cards',
+        'manage_options',
+        'notificaciones-smartcards',
+        'smartcards_pagina_opciones',
+        'dashicons-bell',
+        20
+    );
+}
+
+//Notificaciones Smart cards panel del administrador
+function smartcards_pagina_opciones() {
+    // Guardar cambios
+    if ( isset($_POST['guardar_notificaciones']) && check_admin_referer('smartcards_notif_nonce','smartcards_notif_nonce') ) {
+        $aprob  = isset($_POST['usuarios_aprobacion']) ? array_map('intval', $_POST['usuarios_aprobacion']) : [];
+        $diario = isset($_POST['usuarios_diario'])    ? array_map('intval', $_POST['usuarios_diario'])    : [];
+
+        update_option('smartcards_usuarios_notificar_aprobacion', $aprob);
+        update_option('smartcards_usuarios_notificar_diario',    $diario);
+        echo '<div class="updated"><p>✅ Configuración guardada correctamente.</p></div>';
+    }
+
+    // Obtener todos los editores/administradores
+    $usuarios = get_users(['role__in'=>['editor','administrator']]);
+    $selAprob = get_option('smartcards_usuarios_notificar_aprobacion', []);
+    $selDiario = get_option('smartcards_usuarios_notificar_diario',    []);
+
+    ?>
+    <div class="wrap">
+      <h1>🔔 Seleccionar Editores para Notificaciones</h1>
+      <form method="post">
+        <?php wp_nonce_field('smartcards_notif_nonce','smartcards_notif_nonce'); ?>
+        <table class="wp-list-table widefat fixed striped">
+  <thead>
+    <tr>
+      <th style="width:70px; text-align:center;">Aprobación</th>
+      <th style="width:70px; text-align:center;">Diario</th>
+      <th>Usuario</th>
+      <th>Email</th>
+      <th>Rol</th>
+    </tr>
+  </thead>
+  <tbody>
+    <?php foreach($usuarios as $u): ?>
+    <tr>
+      <td>
+        <input type="checkbox"
+               name="usuarios_aprobacion[]"
+               value="<?php echo $u->ID;?>"
+               <?php checked( in_array($u->ID, $selAprob) );?> />
+      </td>
+      <td>
+        <input type="checkbox"
+               name="usuarios_diario[]"
+               value="<?php echo $u->ID;?>"
+               <?php checked( in_array($u->ID, $selDiario) );?> />
+      </td>
+      <td><?php echo esc_html($u->display_name);?></td>
+      <td><?php echo esc_html($u->user_email);?></td>
+      <td><?php echo esc_html( implode(', ',$u->roles) );?></td>
+    </tr>
+    <?php endforeach;?>
+  </tbody>
+</table>
+        <p><input type="submit"
+                  name="guardar_notificaciones"
+                  class="button button-primary"
+                  value="Guardar configuración" /></p>
+      </form>
+    </div>
+    <?php
+}
+
+
+// === PASO 2: Notificación inmediata al aprobar perfil === //
+
+function notificar_aprobacion_perfil($perfil_url, $nombre_cliente, $nombre_empresa) {
+    $ids_usuarios = get_option('smartcards_usuarios_notificar_aprobacion', []);
+    $usuarios = get_users(['include' => $ids_usuarios]);
+
+    // Agregar por defecto al administrador principal
+    $correos = ['info@smartcards.com.co'];
+
+    foreach ($usuarios as $usuario) {
+        $correos[] = $usuario->user_email;
+    }
+
+    $subject = "✅ Perfil aprobado por $nombre_cliente de $nombre_empresa";
+    $message = "Hola,\n\n$nombre_cliente de la empresa \"$nombre_empresa\" aprobó su perfil público.\n🔗 Revísalo aquí: $perfil_url\n\nSaludos,\nEquipo Smart Cards.";
+
+    wp_mail($correos, $subject, $message);
+
+    // Registrar aprobación para resumen diario
+    registrar_aprobacion_temporal($perfil_url, $nombre_cliente, $nombre_empresa);
+}
+
+function registrar_aprobacion_temporal($perfil_url, $nombre_cliente, $nombre_empresa) {
+    $aprobaciones = get_option('smartcards_aprobaciones_temporales', []);
+
+    $aprobaciones[] = [
+        'perfil_url' => $perfil_url,
+        'cliente' => $nombre_cliente,
+        'empresa' => $nombre_empresa,
+        'fecha' => current_time('mysql'),
+    ];
+
+    update_option('smartcards_aprobaciones_temporales', $aprobaciones);
+}
+
+
+// === PASO 3: Cron para resumen diario === //
+
+register_activation_hook(__FILE__, 'smartcards_activar_cron');
+function smartcards_activar_cron() {
+    if (!wp_next_scheduled('smartcards_cron_notificacion_diaria')) {
+        wp_schedule_event(strtotime('06:00:00'), 'daily', 'smartcards_cron_notificacion_diaria');
+    }
+}
+
+register_deactivation_hook(__FILE__, 'smartcards_desactivar_cron');
+function smartcards_desactivar_cron() {
+    wp_clear_scheduled_hook('smartcards_cron_notificacion_diaria');
+}
+
+add_action('smartcards_cron_notificacion_diaria', 'enviar_notificacion_consolidada');
+
+function enviar_notificacion_consolidada() {
+    $ids_usuarios = get_option('smartcards_usuarios_notificar_diario', []);
+    $usuarios      = get_users(['include' => $ids_usuarios]);
+
+    $correos = ['info@smartcards.com.co'];
+    foreach ($usuarios as $usuario) {
+        $correos[] = $usuario->user_email;
+    }
+
+    $aprobaciones = get_option('smartcards_aprobaciones_temporales', []);
+    if (empty($aprobaciones)) return;
+
+// Filtrar aprobaciones del día anterior
+$ayer = date('Y-m-d', strtotime('-1 day', current_time('timestamp')));
+$aprobaciones_ayer = array_filter($aprobaciones, function($aprobacion) use ($ayer) {
+    return strpos($aprobacion['fecha'], $ayer) === 0;
+});
+
+if (empty($aprobaciones_ayer)) return;
+
+$subject = "📋 Resumen Diario de Perfiles Aprobados (". date('d/m/Y', strtotime($ayer)) .")";
+$message = "Hola,\n\nEstos perfiles fueron aprobados el día ". date('d/m/Y', strtotime($ayer)) .":\n\n";
+
+foreach ($aprobaciones_ayer as $aprobacion) {
+    $message .= "✔️ Cliente: {$aprobacion['cliente']} ({$aprobacion['empresa']})\n🔗 Perfil: {$aprobacion['perfil_url']}\n📅 Hora: {$aprobacion['fecha']}\n\n";
+}
+
+$message .= "Saludos,\nEquipo Smart Cards.";
+
+wp_mail($correos, $subject, $message);
+
+// Limpia solo aprobaciones enviadas (mantén las aprobaciones del día actual)
+$aprobaciones_restantes = array_filter($aprobaciones, function($aprobacion) use ($ayer) {
+    return strpos($aprobacion['fecha'], $ayer) !== 0;
+});
+update_option('smartcards_aprobaciones_temporales', $aprobaciones_restantes);
+}
+
+// Guarda la URL del perfil generado en la Base de datos para mostrar "Mi Smart Cards" como tarjetas
+/**
+ * Guarda información del perfil público (URL, nombre completo y foto del perfil)
+ * para visualizar múltiples Smart Cards en el dashboard.
+ */
+add_action('wp_ajax_guardar_url_perfil', 'guardar_url_perfil');
+function guardar_url_perfil(){
+  
+  // Recibes datos vía AJAX
+  $datos = json_decode(file_get_contents('php://input'), true);
+  $nueva_url = esc_url_raw($datos['perfil_url']);
+
+  // Obtienes datos del usuario actual
+  $user_id = get_current_user_id();
+  $nombre = get_user_meta($user_id, 'smartcards_nombre', true);
+  $apellido = get_user_meta($user_id, 'smartcards_apellido', true);
+  $foto_perfil_id = get_user_meta($user_id, 'smartcards_foto_perfil_id', true);
+  $foto_perfil_url = wp_get_attachment_url($foto_perfil_id);
+
+  // Guardas en meta del usuario (en lugar de sesión)
+  $perfil_nuevo = [
+    'url' => $nueva_url,
+    'nombre_completo' => trim($nombre . ' ' . $apellido),
+    'foto_perfil' => $foto_perfil_url
+  ];
+
+  // Obtiene perfiles existentes o inicializa un arreglo nuevo
+  $perfiles_urls = get_user_meta($user_id, 'smartcards_perfiles_urls', true);
+  if (empty($perfiles_urls)) {
+    $perfiles_urls = [];
+  }
+
+  // Evita duplicados
+  if (!in_array($perfil_nuevo, $perfiles_urls)) {
+    $perfiles_urls[] = $perfil_nuevo;
+  }
+
+  // Guarda claramente en la base de datos
+  update_user_meta($user_id, 'smartcards_perfiles_urls', $perfiles_urls);
+
+  wp_send_json_success();
+}
+
+add_action( 'wp_ajax_sc_track_event', 'sc_track_event_ajax' );
+add_action( 'wp_ajax_nopriv_sc_track_event', 'sc_track_event_ajax' );
+
+/**
+ * Guarda eventos de analíticas desde AJAX.
+ */
+function sc_track_event_ajax() {
+  global $wpdb;
+
+  $raw  = file_get_contents( 'php://input' );
+  $json = json_decode( $raw, true );
+  if ( ! is_array( $json ) ) {
+    $json = [];
+  }
+
+  if ( empty( $_REQUEST['nonce'] ) && ! empty( $json['nonce'] ) ) {
+    $_REQUEST['nonce'] = sanitize_text_field( wp_unslash( $json['nonce'] ) );
+  }
+
+  if ( false === check_ajax_referer( 'sc_track_event', 'nonce', false ) ) {
+    wp_send_json_error( [ 'message' => 'Nonce inválido.' ], 403 );
+  }
+
+  $profile_id = 0;
+  if ( isset( $_POST['profile_id'] ) ) {
+    $profile_id = absint( wp_unslash( $_POST['profile_id'] ) );
+  } elseif ( isset( $json['profile_id'] ) ) {
+    $profile_id = absint( $json['profile_id'] );
+  }
+
+  $event_type = '';
+  if ( isset( $_POST['event_type'] ) ) {
+    $event_type = sanitize_key( wp_unslash( $_POST['event_type'] ) );
+  } elseif ( isset( $json['event_type'] ) ) {
+    $event_type = sanitize_key( $json['event_type'] );
+  }
+  $event_type = substr( $event_type, 0, 32 );
+
+  $button_key = null;
+  if ( isset( $_POST['button_key'] ) ) {
+    $button_key = sanitize_text_field( wp_unslash( $_POST['button_key'] ) );
+  } elseif ( isset( $json['button_key'] ) ) {
+    $button_key = sanitize_text_field( $json['button_key'] );
+  }
+  $button_key = $button_key ? substr( $button_key, 0, 64 ) : null;
+
+  $url = null;
+  if ( isset( $_POST['url'] ) ) {
+    $url = esc_url_raw( wp_unslash( $_POST['url'] ) );
+  } elseif ( isset( $json['url'] ) ) {
+    $url = esc_url_raw( $json['url'] );
+  }
+  $url = $url ? $url : null;
+
+  if ( ! $profile_id || ! $event_type ) {
+    wp_send_json_error( [ 'message' => 'Parámetros inválidos.' ], 400 );
+  }
+
+  $profile_post = get_post( $profile_id );
+  if ( ! $profile_post || 'page' !== $profile_post->post_type ) {
+    wp_send_json_error( [ 'message' => 'profile_id inválido.' ], 400 );
+  }
+
+  $owner_user_id = (int) get_post_meta( $profile_id, 'sc_owner_user_id', true );
+  if ( $owner_user_id <= 0 ) {
+    wp_send_json_error( [ 'message' => 'Owner no encontrado.' ], 400 );
+  }
+
+  $ip_source = '';
+  if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+    $forwarded = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
+    $parts     = explode( ',', $forwarded );
+    $ip_source = trim( $parts[0] );
+  } elseif ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+    $ip_source = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+  }
+
+  $ua_source = '';
+  if ( ! empty( $_SERVER['HTTP_USER_AGENT'] ) ) {
+    $ua_source = sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) );
+  }
+
+  $ip_hash = $ip_source ? hash( 'sha256', $ip_source ) : null;
+  $ua_hash = $ua_source ? hash( 'sha256', $ua_source ) : null;
+
+  $table_name = $wpdb->prefix . 'smartcards_events';
+  $inserted   = $wpdb->insert(
+    $table_name,
+    [
+      'profile_id'    => $profile_id,
+      'owner_user_id' => $owner_user_id,
+      'event_type'    => $event_type,
+      'button_key'    => $button_key,
+      'url'           => $url,
+      'ip_hash'       => $ip_hash,
+      'ua_hash'       => $ua_hash,
+      'created_at'    => current_time( 'mysql' ),
+    ]
+  );
+
+  if ( false === $inserted ) {
+    wp_send_json_error( [ 'message' => 'No se pudo guardar el evento.' ], 500 );
+  }
+
+  wp_send_json_success(
+    [
+      'saved'    => true,
+      'event_id' => (int) $wpdb->insert_id,
+    ]
+  );
+}
+
+// ——— Canonicaliza una URL: sin query/fragment, con trailing slash y base del sitio ———
+function sc_canonicalize_url( $url ) {
+  if ( ! $url ) { return ''; }
+  $parts = wp_parse_url( $url );
+  if ( ! is_array( $parts ) ) { return ''; }
+
+  $path = isset( $parts['path'] ) ? $parts['path'] : '/';
+  $path = trailingslashit( '/' . ltrim( $path, '/' ) ); // asegura slash final
+
+  // Une con el home (normaliza http/https y dominio)
+  return rtrim( home_url(), '/' ) . $path;
+}
+
+// Igualdad por “path canónico”
+function sc_url_matches( $a, $b ) {
+  return sc_canonicalize_url( $a ) === sc_canonicalize_url( $b );
+}
+
+
+/**
+ * Borra completamente una Smart Card:
+ * - Tarjeta del dashboard
+ * - Página del perfil público
+ * - Foto del perfil de la biblioteca
+ * - Foto de la portada de la biblioteca
+ * - Archivo VCF generado
+ */
+add_action('wp_ajax_sc_reject_profile', 'sc_reject_profile_cb');
+add_action('wp_ajax_borrar_smartcard_perfil', 'borrar_smartcard_perfil');
+function sc_reject_profile_cb() {
+  if ( ! is_user_logged_in() ) {
+    wp_send_json_error(['msg' => 'Debes iniciar sesión.']);
+  }
+
+  $user_id   = get_current_user_id();
+  $perfil_url = isset($_POST['perfil_url']) ? esc_url_raw($_POST['perfil_url']) : '';
+  if ( ! $perfil_url ) {
+    wp_send_json_error(['msg' => 'URL del perfil no recibida.']);
+  }
+
+  // Canoniza la URL recibida
+$perfil_url_raw = isset($_POST['perfil_url']) ? esc_url_raw($_POST['perfil_url']) : '';
+$perfil_url     = sc_canonicalize_url( $perfil_url_raw );
+if ( ! $perfil_url ) {
+  wp_send_json_error(['msg' => 'URL del perfil no recibida.']);
+}
+
+  // 0) Resolver post_id de la página pública creada
+  $page_id = url_to_postid( $perfil_url );
+
+  // 1) +1 crédito
+  $meta_key = 'smartcards_credits';
+  $credits  = (int) get_user_meta($user_id, $meta_key, true);
+  $new_credits = $credits + 1;
+  update_user_meta($user_id, $meta_key, $new_credits);
+
+  // 2) Borrar foto de perfil (si existe)
+  $foto_perfil_id = (int) get_user_meta($user_id, 'smartcards_foto_perfil_id', true);
+  if ( $foto_perfil_id ) {
+    wp_delete_attachment($foto_perfil_id, true);
+    delete_user_meta($user_id, 'smartcards_foto_perfil_id');
+  }
+
+  // 3) Borrar foto de portada (si existe)
+  $foto_portada_id = (int) get_user_meta($user_id, 'smartcards_foto_portada_id', true);
+  if ( $foto_portada_id ) {
+    wp_delete_attachment($foto_portada_id, true);
+    delete_user_meta($user_id, 'smartcards_foto_portada_id');
+  }
+
+  // 4) Borrar VCF generado (si existe)
+  $vcf_attachment_id = (int) get_user_meta($user_id, 'smartcards_vcf_attachment_id', true);
+  if ( $vcf_attachment_id ) {
+    wp_delete_attachment($vcf_attachment_id, true);
+    delete_user_meta($user_id, 'smartcards_vcf_attachment_id');
+  }
+
+  // 5) Borrar página pública creada
+  if ( $page_id ) {
+    wp_delete_post($page_id, true);
+  }
+
+  // 6) Remover tarjeta del dashboard (lista de perfiles del usuario)
+  $perfiles_urls = get_user_meta($user_id, 'smartcards_perfiles_urls', true);
+if ( ! is_array($perfiles_urls) ) { $perfiles_urls = []; }
+
+$updated = [];
+foreach ( $perfiles_urls as $item ) {
+  // Conserva los que NO coinciden (comparación canónica)
+  if ( ! isset($item['url']) || ! sc_url_matches($item['url'], $perfil_url) ) {
+    $updated[] = $item;
+  }
+}
+update_user_meta($user_id, 'smartcards_perfiles_urls', $updated);
+  
+
+  // 7) Respuesta
+  wp_send_json_success([
+    'msg'      => 'Se devolvió 1 crédito, se eliminó el perfil y los archivos asociados.',
+    'credits'  => $new_credits,
+    'redirect' => home_url('/dashboard/'),
+  ]);
+}
+
+/**
+ * Borrado manual desde el dashboard:
+ * - Remueve la tarjeta del listado (smartcards_perfiles_urls)
+ * - Borra la página del perfil público
+ * - Borra foto de perfil, foto de portada y VCF si existen
+ *
+ * Requiere que existan los helpers:
+ *   sc_canonicalize_url($url) y sc_url_matches($a, $b)
+ */
+function borrar_smartcard_perfil() {
+  if ( ! is_user_logged_in() ) {
+    wp_send_json_error(['message' => 'Debes iniciar sesión.']);
+  }
+
+  $user_id = get_current_user_id();
+
+  // Permite JSON (fetch con body) o form-data
+  $raw        = file_get_contents('php://input');
+  $datos      = json_decode($raw, true);
+  $perfil_url = isset($_POST['perfil_url']) ? $_POST['perfil_url'] : ( $datos['perfil_url'] ?? '' );
+  $perfil_url = sc_canonicalize_url( esc_url_raw( $perfil_url ) );
+
+  if ( ! $perfil_url ) {
+    wp_send_json_error(['message' => 'URL del perfil no recibida.']);
+  }
+
+  // 1) Borrar página pública (por URL canónica)
+  $page_id = url_to_postid( $perfil_url );
+  if ( $page_id ) {
+    wp_delete_post($page_id, true); // permanente
+  }
+
+  // 2) Borrar foto de perfil
+  $foto_perfil_id = (int) get_user_meta($user_id, 'smartcards_foto_perfil_id', true);
+  if ( $foto_perfil_id ) {
+    wp_delete_attachment($foto_perfil_id, true);
+    delete_user_meta($user_id, 'smartcards_foto_perfil_id');
+  }
+
+  // 3) Borrar foto de portada
+  $foto_portada_id = (int) get_user_meta($user_id, 'smartcards_foto_portada_id', true);
+  if ( $foto_portada_id ) {
+    wp_delete_attachment($foto_portada_id, true);
+    delete_user_meta($user_id, 'smartcards_foto_portada_id');
+  }
+
+  // 4) Borrar VCF
+  $vcf_attachment_id = (int) get_user_meta($user_id, 'smartcards_vcf_attachment_id', true);
+  if ( $vcf_attachment_id ) {
+    wp_delete_attachment($vcf_attachment_id, true);
+    delete_user_meta($user_id, 'smartcards_vcf_attachment_id');
+  }
+
+  // 5) Remover tarjeta del dashboard (comparación canónica)
+  $perfiles_urls = get_user_meta($user_id, 'smartcards_perfiles_urls', true);
+  $removed = false;
+  if ( is_array($perfiles_urls) && ! empty($perfiles_urls) ) {
+    $updated = [];
+    foreach ( $perfiles_urls as $item ) {
+      if ( isset($item['url']) && sc_url_matches($item['url'], $perfil_url) ) {
+        $removed = true;
+        continue; // no lo copiamos => eliminado
+      }
+      $updated[] = $item;
+    }
+    update_user_meta($user_id, 'smartcards_perfiles_urls', $updated);
+  }
+
+  if ( $removed || $page_id ) {
+    wp_send_json_success(['message' => 'Smart Card eliminada.']);
+  }
+
+  wp_send_json_error(['message' => 'No se encontró el perfil solicitado.']);
+}
+
+
+// Endpoint REST Protegido para Crear Usuarios
+add_action('rest_api_init', function () {
+    register_rest_route('smartcards/v1', '/create-user', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'smartcards_create_user',
+        'permission_callback' => function (WP_REST_Request $request) {
+            $token = $request->get_header('X-SMARTCARDS-TOKEN');
+            return $token === 'n2#XfP9!kz$H6V@Bs%cTm*a7G^wYjD';
+        },
+    ]);
+});
+
+function smartcards_create_user(WP_REST_Request $request) {
+    $params = $request->get_json_params();
+
+    if (empty($params['username']) || empty($params['email']) || empty($params['password'])) {
+        return new WP_REST_Response(['message' => 'Faltan datos obligatorios.'], 400);
+    }
+
+    $user_id = username_exists($params['username']);
+
+    if (!$user_id) {
+        $user_id = wp_create_user(
+            sanitize_user($params['username']),
+            sanitize_text_field($params['password']),
+            sanitize_email($params['email'])
+        );
+
+        if (is_wp_error($user_id)) {
+            return new WP_REST_Response(['message' => $user_id->get_error_message()], 500);
+        }
+
+        wp_update_user([
+            'ID' => $user_id,
+            'first_name' => sanitize_text_field($params['first_name']),
+            'last_name' => sanitize_text_field($params['last_name']),
+            'role' => 'customer',
+        ]);
+    }
+
+    // Sumar claramente los créditos si ya existen
+    $creditos_actuales = (int)get_user_meta($user_id, 'smartcards_credits', true);
+    $creditos_nuevos = isset($params['smartcards_credits']) ? intval($params['smartcards_credits']) : 0;
+    $total_creditos = $creditos_actuales + $creditos_nuevos;
+
+    update_user_meta($user_id, 'smartcards_credits', $total_creditos);
+
+    return new WP_REST_Response([
+        'message' => 'Usuario creado correctamente.',
+        'total_creditos' => $total_creditos
+    ], 200);
+}
+
+// Shortcode Mejorado para Mostrar Productos Externos
+add_shortcode('productos_externos', 'smartcards_mostrar_productos_externos');
+
+function smartcards_mostrar_productos_externos() {
+    $response = wp_remote_get('https://staging.smartcards.com.co/wp-json/smartcards/v1/products', ['timeout' => 30]);
+
+    if (is_wp_error($response)) {
+        return '<p>Error al cargar productos externos.</p>';
+    }
+
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    if (empty($data['products'])) {
+        return '<p>No hay productos disponibles en este momento.</p>';
+    }
+
+    $html = '<div class="smartcards-productos">';
+    foreach ($data['products'] as $product) {
+        $html .= sprintf(
+            '<div class="smartcard-product">
+                <img src="%1$s" alt="%2$s">
+                <h3>%2$s</h3>
+                <p>%3$s</p>
+                <span class="price">$%4$s</span>
+                <a href="%5$s" target="_blank" class="button">Ver Producto</a>
+            </div>',
+            esc_url($product['image']),
+            esc_html($product['name']),
+            esc_html($product['description']),
+            number_format_i18n($product['price'], 2),
+            esc_url($product['url'])
+        );
+    }
+    $html .= '</div>';
+
+    return $html;
+}
+
+// ——————————————————————————————————————————————
+// 1) Desactivar créditos al registrarse en la App
+// ——————————————————————————————————————————————
+add_action( 'init', function() {
+    remove_action( 'user_register', 'asignar_creditos_nuevo_usuario' );
+} );
+
+// ——————————————————————————————————————————————
+// 2) Sumar créditos al completar un pedido en la App
+// ——————————————————————————————————————————————
+add_action( 'woocommerce_order_status_completed', 'sc_creditos_por_pedido', 10, 1 );
+function sc_creditos_por_pedido( $order_id ) {
+    $order   = wc_get_order( $order_id );
+    $user_id = $order->get_user_id();
+    if ( ! $user_id ) {
+        return; // si es invitado, no hacemos nada
+    }
+
+    $total_creditos = 0;
+
+    foreach ( $order->get_items() as $item ) {
+        $product = $item->get_product();
+        $sku     = $product->get_sku();
+        $prod_id = $product->get_id();
+        $qty     = $item->get_quantity();
+
+        // — Créditos sueltos (producto ID 1935) —
+        if ( $prod_id === 1935 ) {
+            $total_creditos += $qty;
+        }
+        // — Paquetes antiguos (SKU "creditos-smartcards-X") —
+        elseif ( preg_match( '/^creditos-smartcards-(\d+)$/', $sku, $m ) ) {
+            $packs = intval( $m[1] );
+            $total_creditos += $packs * $qty;
+        }
+    }
+
+    if ( $total_creditos > 0 ) {
+        $actual = (int) get_user_meta( $user_id, 'smartcards_credits', true );
+        update_user_meta( $user_id, 'smartcards_credits', $actual + $total_creditos );
+    }
+}
+
+// ——————————————————————————————————————————————
+// Redirigir al carrito al añadir el crédito suelto (ID 1935)
+// ——————————————————————————————————————————————
+add_filter( 'woocommerce_add_to_cart_redirect', 'sc_redirect_credito_to_cart', 20 );
+function sc_redirect_credito_to_cart( $url ) {
+    if ( isset( $_REQUEST['add-to-cart'] ) && absint( $_REQUEST['add-to-cart'] ) === 1935 ) {
+        return wc_get_cart_url();
+    }
+    return $url;
+}
+
+/**
+ * Agrega créditos al usuario cuando compra productos específicos.
+ * Hook a la acción cuando el pedido cambia a “completedo”.
+ * Aquí verificamos los productos comprados y sumamos créditos por cada unidad.
+ */
+add_action( 'woocommerce_order_status_completed', 'sc_agregar_creditos_por_producto', 10, 1 );
+
+function sc_agregar_creditos_por_producto( $order_id ) {
+    // Obtener el objeto del pedido
+    $order = wc_get_order( $order_id );
+    if ( ! $order ) {
+        return;
+    }
+
+    // ID del usuario que hizo el pedido
+    $user_id = $order->get_user_id();
+    // Si el pedido fue hecho como invitado (user_id == 0), no hacemos nada
+    if ( $user_id === 0 ) {
+        return;
+    }
+
+    // Lista de IDs de productos que generan 1 crédito cada unidad comprada
+    $productos_con_credito = array( 1922, 1927, 1928, 1926, 1925, 1924, 1923, 1934, 1933, 1932, 1929, 1931, 1930 );
+
+    // Obtener créditos actuales del usuario (meta: smartcards_credits)
+    $current_credits = (int) get_user_meta( $user_id, 'smartcards_credits', true );
+
+    // Variable para acumular nuevos créditos a asignar
+    $nuevos_creditos = 0;
+
+    // Recorrer cada ítem del pedido y ver si corresponde a un producto de la lista
+    foreach ( $order->get_items() as $item ) {
+        $product_id = $item->get_product_id();
+        $cantidad   = $item->get_quantity();
+
+        if ( in_array( $product_id, $productos_con_credito, true ) ) {
+            // Sumar una unidad de crédito por cada unidad comprada
+            $nuevos_creditos += $cantidad;
+        }
+    }
+
+    // Si compró al menos un producto que da crédito, actualizamos su meta
+    if ( $nuevos_creditos > 0 ) {
+        $total = $current_credits + $nuevos_creditos;
+        update_user_meta( $user_id, 'smartcards_credits', $total );
+    }
+}
+
+//Añadir la opción eliminar cuenta.
+add_action('admin_post_eliminar_cuenta_usuario', function(){
+  if (!is_user_logged_in() || !wp_verify_nonce($_REQUEST['_wpnonce'],'eliminar_cuenta')) {
+    wp_die(__('Acceso denegado','smartcards'));
+  }
+  wp_delete_user(get_current_user_id());
+  wp_redirect(home_url('/'));
+  exit;
+});
+
+// Cargar las traducciones para activar modo Inglés y Español
+add_action( 'plugins_loaded', function(){
+    load_plugin_textdomain(
+        'smartcards',
+        false,
+        dirname( plugin_basename(__FILE__) ) . '/languages'
+    );
+});
+
+// Forzar el locale con la cookie sc_user_lang
+add_filter( 'locale', function( $locale ){
+    // Si el usuario ya eligió idioma, lo usamos
+    if ( ! empty( $_COOKIE['sc_user_lang'] ) ) {
+        $lang = sanitize_text_field( $_COOKIE['sc_user_lang'] );
+        // Sólo permitimos es_ES o en_US
+        if ( in_array( $lang, [ 'es_ES', 'en_US' ], true ) ) {
+            return $lang;
+        }
+    }
+    // Si no hay cookie o es inválida, devolvemos el locale original
+    return $locale;
+});
+
+// ——————————————————————————————
+// Encolar el listener del toggle de idioma
+// ——————————————————————————————
+add_action( 'wp_enqueue_scripts', function(){
+    // Asegúrate de que tu script principal ya esté encolado
+    wp_enqueue_script(
+        'smartcards-frontend',
+        SMARTCARDS_PLUGIN_URL . 'includes/assets/js/smartcards-frontend.js',
+        [],
+        '1.0',
+        true
+    );
+
+    // Inline script para el toggle que guarda la cookie indefinidamente
+    $toggle_js = <<<'JS'
+document.addEventListener('DOMContentLoaded', function(){
+  var toggle = document.getElementById('sc_lang_toggle');
+  if (!toggle) return;
+  // Inicializar estado según cookie
+  var cookies = document.cookie.split('; ').reduce(function(acc, pair){
+    var parts = pair.split('=');
+    acc[parts[0]] = parts[1];
+    return acc;
+  }, {});
+  if (cookies['sc_user_lang'] === 'en_US') {
+    toggle.checked = true;
+  }
+  // Listener para cambios
+  toggle.addEventListener('change', function(){
+    var lang    = this.checked ? 'en_US' : 'es_ES';
+    var expires = 'expires=Fri, 31 Dec 9999 23:59:59 GMT';
+    document.cookie = 'sc_user_lang=' + lang + '; path=/; ' + expires;
+    location.reload();
+  });
+});
+JS;
+    wp_add_inline_script( 'smartcards-frontend', $toggle_js );
+});
+
+// ===========================
+// Encolar script y pasar traducciones del archivo .js
+// ===========================
+function smartcards_cargar_scripts() {
+  wp_enqueue_script(
+    'smartcards-frontend',
+    plugin_dir_url(__FILE__) . 'smartcards-frontend.js',
+    [],
+    '1.0.0',
+    true
+  );
+  wp_localize_script('smartcards-frontend', 'smartcardsL10n', [
+  // Loading / botón
+  'creating_profile'        => __('Creando Perfil Público...', 'smartcards'),
+  'waiting_time'            => sprintf(__('Tiempo de espera %s segundos', 'smartcards'), 15),
+  'error_creating_profile'  => __('Error al activar perfil.', 'smartcards'),
+  'generate_profile'        => __('Generar Perfil Público', 'smartcards'),
+  'request_error'           => __('Error en la petición.', 'smartcards'),
+
+  // Modal de revisión post-creación (NUEVO)
+  'review_modal_message'    => __('🔔 Verifica que todos los detalles de tu perfil público estén correctos, incluyendo el botón “Guardar contacto”, los botones sociales, la foto de portada y la foto de perfil.', 'smartcards'),
+  'review_ok'               => __('Aprobado ✅', 'smartcards'),
+  'review_issue'            => __('Mi perfil tiene un error ❌', 'smartcards'),
+
+  // Compartir
+  'share_title'             => __('Compartir perfil', 'smartcards'),
+  'whatsapp'                => __('WhatsApp 📲', 'smartcards'),
+  'copy_link'               => __('Copiar enlace 🔗', 'smartcards'),
+  'email'                   => __('Correo electrónico ✉️', 'smartcards'),
+  'close'                   => __('Cerrar ✖', 'smartcards'),
+  'copied_link'             => __('✅ Enlace copiado al portapapeles.', 'smartcards'),
+  'email_subject'           => __('Mi Smart Cards', 'smartcards'),
+  'email_body'              => __('Mira mi perfil público aquí:', 'smartcards'),
+
+  // Eliminar tarjeta (si lo usas)
+  'delete_card'             => __('Eliminar Tarjeta 🗑', 'smartcards'),
+  'cancel'                  => __('Cancelar', 'smartcards'),
+  'confirm_delete'          => __('⚠️ ¿Seguro que deseas eliminar esta tarjeta? Esta acción no se puede deshacer.', 'smartcards'),
+  'deleted_success'         => __('✅ Tarjeta eliminada correctamente.', 'smartcards'),
+  'deleted_error'           => __('❌ Error al eliminar tarjeta.', 'smartcards'),
+
+  // Validaciones de imágenes (si lo usas)
+  'img_too_big_profile'     => __('El archivo supera los 2 MB permitidos.', 'smartcards'),
+  'img_too_big_cover'       => __('La foto de portada supera los 5 MB permitidos.', 'smartcards'),
+
+  // SIEMPRE dentro de este mismo arreglo:
+  'ajax_url'                => esc_url( admin_url('admin-ajax.php') ),
+  'track_nonce'             => wp_create_nonce('sc_track_event'),
+]);
+}
+add_action('wp_enqueue_scripts', 'smartcards_cargar_scripts');
+
+/**
+ * === SmartCards: Login nativo + Google OAuth (REST callback) ===
+ * Pega este bloque en tu archivo principal del plugin.
+ *
+ * Requisitos:
+ * - Archivo credenciales: wp-content/uploads/private/google-oauth.json
+ *   con estructura estándar de Google ("web" -> client_id, client_secret, auth_uri/token_uri opcional).
+ * - En Google Cloud, añade como Authorized redirect URI:
+ *   https://app.smartcards.com.co/wp-json/smartcards/v1/google-callback
+ *   (y el de app01 si lo usas: https://app01.smartcards.com.co/wp-json/smartcards/v1/google-callback)
+ */
+
+/* -----------------------------------------------------------
+ * 1) Credenciales de Google (redirect_uri usando endpoint REST)
+ * ----------------------------------------------------------- */
+function sc_google_creds() {
+  $path = WP_CONTENT_DIR . '/uploads/private/google-oauth.json';
+  if (!file_exists($path)) return null;
+
+  $json = json_decode(file_get_contents($path), true);
+  if (!$json || !isset($json['web'])) return null;
+
+  return [
+    'client_id'     => $json['web']['client_id']     ?? '',
+    'client_secret' => $json['web']['client_secret'] ?? '',
+    'redirect_uri'  => rest_url('smartcards/v1/google-callback'),
+    'auth_uri'      => $json['web']['auth_uri']      ?? 'https://accounts.google.com/o/oauth2/v2/auth',
+    'token_uri'     => $json['web']['token_uri']     ?? 'https://oauth2.googleapis.com/token',
+    'userinfo_uri'  => 'https://openidconnect.googleapis.com/v1/userinfo',
+  ];
+}
+
+/* -----------------------------------------------------------
+ * 2) Registro del endpoint REST para el callback de Google
+ * ----------------------------------------------------------- */
+add_action('rest_api_init', function () {
+  register_rest_route('smartcards/v1', '/google-callback', [
+    'methods'  => 'GET',
+    'callback' => 'sc_google_callback',
+    'permission_callback' => '__return_true',
+  ]);
+});
+
+/* -----------------------------------------------------------
+ * 3) Callback de Google: token -> userinfo -> login/crear usuario
+ * ----------------------------------------------------------- */
+function sc_google_callback(\WP_REST_Request $req) {
+  // Error directo desde Google
+  if ($err = $req->get_param('error')) {
+    wp_safe_redirect( home_url('/?login_error=' . urlencode($err)) );
+    exit;
+  }
+
+  // Validar state (CSRF)
+  $state = sanitize_text_field($req->get_param('state'));
+  $cookie_state = isset($_COOKIE['oauth_state']) ? sanitize_text_field($_COOKIE['oauth_state']) : '';
+  if (!$state || !$cookie_state || !hash_equals($cookie_state, $state)) {
+    return new \WP_REST_Response(['error'=>'Invalid state'], 400);
+  }
+  // Invalidar cookie state
+  setcookie('oauth_state', '', [
+    'expires'  => time()-3600,
+    'path'     => '/',
+    'domain'   => $_SERVER['HTTP_HOST'],
+    'secure'   => is_ssl(),
+    'httponly' => true,
+    'samesite' => 'Lax'
+  ]);
+
+  // Code
+  $code = sanitize_text_field($req->get_param('code'));
+  if (!$code) return new \WP_REST_Response(['error'=>'Missing code'], 400);
+
+  $c = sc_google_creds();
+  if (!$c || empty($c['client_id']) || empty($c['client_secret'])) {
+    return new \WP_REST_Response(['error'=>'OAuth creds not found'], 500);
+  }
+
+  // Intercambio code -> token
+  $resp = wp_remote_post($c['token_uri'], [
+    'body' => [
+      'code'          => $code,
+      'client_id'     => $c['client_id'],
+      'client_secret' => $c['client_secret'],
+      'redirect_uri'  => $c['redirect_uri'],
+      'grant_type'    => 'authorization_code',
+    ],
+    'headers' => [ 'Content-Type' => 'application/x-www-form-urlencoded' ],
+    'timeout' => 20
+  ]);
+  if (is_wp_error($resp)) return new \WP_REST_Response(['error'=>'Token request failed'], 500);
+
+  $tok = json_decode(wp_remote_retrieve_body($resp), true);
+  if (empty($tok['access_token'])) return new \WP_REST_Response(['error'=>'Invalid token response'], 500);
+
+  // Userinfo (OIDC)
+  $ui  = wp_remote_get($c['userinfo_uri'], [
+    'headers' => [ 'Authorization' => 'Bearer ' . $tok['access_token'] ],
+    'timeout'=> 20
+  ]);
+  if (is_wp_error($ui)) return new \WP_REST_Response(['error'=>'Userinfo request failed'], 500);
+
+  $user = json_decode(wp_remote_retrieve_body($ui), true);
+  if (empty($user['email'])) return new \WP_REST_Response(['error'=>'Email not returned'], 500);
+
+  // Buscar o crear usuario por email
+  $wp_user = get_user_by('email', $user['email']);
+  if (!$wp_user) {
+    $base   = sanitize_user( preg_replace('/@.*/','', $user['email']) ) ?: 'user';
+    $login  = $base; $i = 1;
+    while (username_exists($login)) { $login = $base . $i++; }
+
+    $uid = wp_create_user($login, wp_generate_password(20), $user['email']);
+    if (is_wp_error($uid)) {
+      return new \WP_REST_Response(['error'=>'wp_create_user failed'], 500);
+    }
+
+    wp_update_user([
+      'ID'           => $uid,
+      'display_name' => $user['name'] ?? $user['email'],
+      'first_name'   => $user['given_name'] ?? '',
+      'last_name'    => $user['family_name'] ?? '',
+      'role'         => 'subscriber',
+    ]);
+
+    if (!empty($user['sub']))     update_user_meta($uid, 'google_sub', $user['sub']);
+    if (!empty($user['picture'])) update_user_meta($uid, 'google_picture', esc_url_raw($user['picture']));
+
+    $wp_user = get_user_by('id', $uid);
+  }
+
+  // Iniciar sesión
+  wp_set_auth_cookie($wp_user->ID, true, is_ssl());
+
+  // Respetar redirect almacenado
+  $fallback = home_url('/dashboard/');
+  $redirect = $fallback;
+  if (!empty($_COOKIE['after_login_redirect'])) {
+    $tmp = esc_url_raw($_COOKIE['after_login_redirect']);
+    $valid = wp_validate_redirect($tmp, $fallback);
+    if ($valid) { $redirect = $valid; }
+    setcookie('after_login_redirect', '', [
+      'expires'  => time()-3600,
+      'path'     => '/',
+      'domain'   => $_SERVER['HTTP_HOST'],
+      'secure'   => is_ssl(),
+      'httponly' => true,
+      'samesite' => 'Lax'
+    ]);
+  }
+
+  wp_safe_redirect($redirect);
+  exit;
+}
+
+/* -----------------------------------------------------------
+ * 4) Guardián del dashboard: redirige a /app-login/ (no wp-login.php)
+ * ----------------------------------------------------------- */
+add_action('template_redirect', function () {
+  if ( is_user_logged_in() ) return;
+
+  $dashboard_slugs = ['dashboard', 'app-dashboard'];
+  foreach ($dashboard_slugs as $slug) {
+    if ( is_page($slug) ) {
+
+      // Evitar bucles si ya estamos en la página de login personalizada
+      if ( is_page('app-login') ) return;
+
+      $dashboard_url = home_url("/{$slug}/");
+      $login_page    = home_url('/app-login/');
+      $login_url     = add_query_arg('redirect_to', rawurlencode($dashboard_url), $login_page);
+
+      wp_safe_redirect($login_url);
+      exit;
+    }
+  }
+});
+
+/* -----------------------------------------------------------
+ * 5) Shortcode [smartcards_login]: login WP + botón Google
+ * ----------------------------------------------------------- */
+add_action('init', function () {
+  add_shortcode('smartcards_login', 'sc_render_login_shortcode');
+});
+
+function sc_render_login_shortcode(){
+  // Si ya hay sesión, evita mostrar formulario
+  if ( is_user_logged_in() ) {
+    $dash = home_url('/dashboard/');
+    return '<p>Ya iniciaste sesión. <a href="'.esc_url($dash).'">Ir al dashboard</a></p>';
+  }
+
+  // Destino post-login (por defecto /dashboard/)
+  $redirect = isset($_GET['redirect_to']) ? esc_url_raw($_GET['redirect_to']) : home_url('/dashboard/');
+
+  // Guardar redirect en cookie
+  setcookie('after_login_redirect', $redirect, [
+    'expires'  => time()+3600,
+    'path'     => '/',
+    'domain'   => $_SERVER['HTTP_HOST'],
+    'secure'   => is_ssl(),
+    'httponly' => true,
+    'samesite' => 'Lax'
+  ]);
+
+  // CSRF state
+  $state = wp_generate_password(24, false, false);
+  setcookie('oauth_state', $state, [
+    'expires'  => time()+900,
+    'path'     => '/',
+    'domain'   => $_SERVER['HTTP_HOST'],
+    'secure'   => is_ssl(),
+    'httponly' => true,
+    'samesite' => 'Lax'
+  ]);
+
+  // Credenciales para pintar botón Google
+  $c = sc_google_creds();
+  $google_auth_url = '';
+  if ($c && !empty($c['client_id'])) {
+    $google_auth_url = $c['auth_uri'] . '?' . http_build_query([
+      'client_id'              => $c['client_id'],
+      'redirect_uri'           => $c['redirect_uri'], // <- REST callback
+      'response_type'          => 'code',
+      'scope'                  => 'openid email profile',
+      'include_granted_scopes' => 'true',
+      'access_type'            => 'online',
+      'state'                  => $state,
+    ]);
+  }
+
+  // URL de registro personalizada con redirect de vuelta
+  $register_url = add_query_arg(
+    'redirect_to',
+    rawurlencode($redirect),
+    'https://app.smartcards.com.co/registro/'
+  );
+
+  // --- Salida HTML
+  ob_start(); ?>
+  <div class="sc-auth-wrap">
+    <div class="sc-auth-card" role="form" aria-labelledby="sc-auth-title">
+      <h2 id="sc-auth-title" class="sc-auth-title">Inicia sesión</h2>
+
+      <div class="sc-auth-form">
+        <?php
+          // Formulario nativo WP (botón "Entrar" verde)
+          wp_login_form([
+            'redirect'       => $redirect,
+            'remember'       => true,
+            'label_username' => 'Correo o usuario',
+            'label_password' => 'Contraseña',
+            'label_remember' => 'Recuérdame',
+            'label_log_in'   => 'Entrar',
+            'id_submit'      => 'sc-login-submit',
+          ]);
+        ?>
+      </div>
+
+      <div class="sc-auth-forgot">
+  <a href="<?php echo esc_url( wp_lostpassword_url( $redirect ) ); ?>">
+    ¿Olvidaste tu contraseña?
+  </a>
+</div>
+
+      <!-- Acción secundaria: Crear cuenta con correo -->
+      <div class="sc-auth-actions">
+        <a class="sc-secondary-btn" href="<?php echo esc_url($register_url); ?>">
+          Crear cuenta con correo
+        </a>
+      </div>
+
+      <?php if ($google_auth_url): ?>
+        <!-- Separador -->
+        <div class="sc-auth-divider" role="separator" aria-label="o"></div>
+
+        <!-- Botón brand Google -->
+        <a class="sc-google-btn" id="sc-google-btn"
+           href="<?php echo esc_url($google_auth_url); ?>"
+           rel="nofollow noopener">
+          <span class="sc-google-icon" aria-hidden="true">
+            <!-- Google "G" oficial (SVG) -->
+            <svg width="18" height="18" viewBox="0 0 48 48" focusable="false" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.72 1.22 9.22 3.6l6.9-6.9C36.9 2.38 30.9 0 24 0 14.62 0 6.4 5.38 2.54 13.22l8.02 6.22C12.5 12.38 17.8 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.5 24c0-1.54-.14-3.02-.4-4.44H24v8.41h12.7c-.55 2.97-2.23 5.49-4.75 7.19l7.27 5.65C43.93 36.98 46.5 30.98 46.5 24z"/>
+              <path fill="#FBBC05" d="M10.56 28.44A14.46 14.46 0 0 1 9.5 24c0-1.54.26-3.02.73-4.41l-8.02-6.22A24 24 0 0 0 0 24c0 3.86.92 7.5 2.54 10.78l8.02-6.34z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.92-2.14 15.9-5.83l-7.27-5.65c-2 1.35-4.57 2.14-8.63 2.14-6.2 0-11.5-3.88-13.44-9.16l-8.02 6.27C6.4 42.62 14.62 48 24 48z"/>
+              <path fill="none" d="M0 0h48v48H0z"/>
+            </svg>
+          </span>
+          <span class="sc-google-text">Continuar con Google</span>
+        </a>
+      <?php endif; ?>
+      <div class="sc-auth-divider" role="separator" aria-label="o"></div>
+      <!-- Botón brand Apple -->
+      <button id="sc-apple-login"
+        class="siwa-btn siwa-btn--pill"
+        type="button" aria-label="Continuar con Apple">
+  <span class="siwa-icon" aria-hidden="true">
+    <!-- Logo Apple en SVG (blanco) -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+         viewBox="0 0 14 17" fill="currentColor" role="img" focusable="false">
+      <path d="M13.99 13.04c-.37.85-.81 1.57-1.35 2.17-.72.8-1.51 1.2-2.36 1.2-.45 0-1.01-.13-1.69-.38-.69-.26-1.33-.39-1.92-.39-.61 0-1.27.13-1.97.39-.7.25-1.25.38-1.64.38-.92 0-1.75-.38-2.48-1.14C.46 14.94 0 13.86 0 12.51c0-1.02.27-1.98.8-2.87.52-.89 1.22-1.34 2.09-1.34.41 0 .94.13 1.59.38.64.25 1.17.38 1.6.38.39 0 .94-.13 1.65-.38.71-.26 1.31-.39 1.79-.39.58 0 1.1.14 1.57.41.47.27.82.63 1.07 1.08-.85.53-1.27 1.28-1.27 2.26 0 .76.28 1.41.84 1.95.42.41.93.66 1.53.76zM9.96 0c0 .52-.19 1.02-.56 1.5-.45.58-1 .94-1.67.88a2 2 0 0 1 .02-.38c.13-.5.39-.97.77-1.4C8.97.2 9.51-.07 10.15 0c-.06.53-.19.95-.19 1z"/>
+    </svg>
+  </span>
+  <span class="siwa-label">Continuar con Apple</span>
+</button>
+    </div>
+  </div>
+  <?php
+  return ob_get_clean();
+}
+
+/* -----------------------------------------------------------
+ * 6) (Opcional) Enqueue de estilos/JS del botón
+ * ----------------------------------------------------------- */
+add_action('wp_enqueue_scripts', function () {
+
+  // Bases de ruta y URL dentro del plugin
+  $base = plugin_dir_path(__FILE__) . 'includes/assets/';
+  $url  = plugins_url('includes/assets/', __FILE__);
+
+  // Rutas relativas de los assets
+  $css_rel = 'css/smartcards-styles.css';
+  $js_rel  = 'js/smartcards-frontend.js';
+
+  $css_file = $base . $css_rel;
+  $js_file  = $base . $js_rel;
+
+  // CSS
+  if ( file_exists($css_file) ) {
+    wp_enqueue_style(
+      'smartcards-styles',
+      $url . $css_rel,
+      [],
+      filemtime($css_file) // ← versión dinámica (cache-busting)
+    );
+  }
+
+  // JS
+  if ( file_exists($js_file) ) {
+    wp_enqueue_script(
+      'smartcards-frontend',
+      $url . $js_rel,
+      [],
+      filemtime($js_file), // ← versión dinámica (cache-busting)
+      true
+    );
+
+    // Variable global que tu JS usa para AJAX
+    //wp_localize_script('smartcards-frontend', 'smartcardsL10n', [
+    //  'ajax_url' => admin_url('admin-ajax.php'),
+    //]);
+  }
+}, 20);
+
+
+/* === Fallback WooCommerce desde web/desktop === */
+if ( ! function_exists('sc_wc_fallback_url_from_sku') ) {
+  function sc_wc_fallback_url_from_sku( $sku ){
+    // Mantén sincronizado con el $map del endpoint IAP
+    $sku_to_product = [
+      'creditos_smartcards_1'  => 1935, // 1 crédito
+      'creditos_smartcards_5'  => 4946, // 5 créditos
+      'creditos_smartcards_10' => 4947, // 10 créditos
+    ];
+    $pid = intval( $sku_to_product[ $sku ] ?? 0 );
+    if ( ! $pid || ! function_exists('wc_get_checkout_url') ) return home_url('/');
+    return wc_get_checkout_url() . '?add-to-cart=' . $pid;
+  }
+}
+
+/* === Shortcodes con <a> y data-attrs para IAP/ fallback Woo === */
+remove_shortcode('sc_iap_credito_uno');
+add_shortcode('sc_iap_credito_uno', function(){
+  $sku = 'creditos_smartcards_1';
+  $url = esc_url( sc_wc_fallback_url_from_sku($sku) );
+  ob_start(); ?>
+  <a href="<?php echo $url; ?>"
+     class="sc-button-featured js-iap-purchase"
+     data-sku="<?php echo esc_attr($sku); ?>"
+     data-fallback="<?php echo esc_attr($url); ?>">
+    Comprar 1 crédito
+  </a>
+  <?php return ob_get_clean();
+});
+
+remove_shortcode('sc_iap_credito_cinco');
+add_shortcode('sc_iap_credito_cinco', function(){
+  $sku = 'creditos_smartcards_5';
+  $url = esc_url( sc_wc_fallback_url_from_sku($sku) );
+  ob_start(); ?>
+  <a href="<?php echo $url; ?>"
+     class="sc-button-featured js-iap-purchase"
+     data-sku="<?php echo esc_attr($sku); ?>"
+     data-fallback="<?php echo esc_attr($url); ?>">
+    Comprar 5 créditos
+  </a>
+  <?php return ob_get_clean();
+});
+
+remove_shortcode('sc_iap_credito_diez');
+add_shortcode('sc_iap_credito_diez', function(){
+  $sku = 'creditos_smartcards_10';
+  $url = esc_url( sc_wc_fallback_url_from_sku($sku) );
+  ob_start(); ?>
+  <a href="<?php echo $url; ?>"
+     class="sc-button-featured js-iap-purchase"
+     data-sku="<?php echo esc_attr($sku); ?>"
+     data-fallback="<?php echo esc_attr($url); ?>">
+    Comprar 10 créditos
+  </a>
+  <?php return ob_get_clean();
+});
+
+// SOLO usuarios logueados
+add_action('wp_ajax_sc_sc_iap_complete', 'sc_sc_iap_complete');
+// ❌ NO pongas el nopriv
+
+function sc_sc_iap_complete(){
+  if ( ! is_user_logged_in() ) {
+    // Devuelve mensaje claro; el JS lo puede usar para redirigir
+    wp_send_json_error(['code'=>'auth_required','message'=>'Debes iniciar sesión para completar la compra.']);
+  }
+
+  $raw = file_get_contents('php://input');
+  $j   = json_decode($raw, true) ?: $_POST;
+
+  $productId     = sanitize_text_field($j['productId'] ?? '');
+  $transactionId = sanitize_text_field($j['transactionId'] ?? '');
+  $platform      = strtolower(sanitize_text_field($j['platform'] ?? ''));
+  $receipt       = $j['receipt'] ?? null;
+  $purchaseToken = sanitize_text_field($j['purchaseToken'] ?? '');
+
+  // Normaliza plataforma (solo aceptamos ios/android)
+if ($platform !== 'ios' && $platform !== 'android') {
+  wp_send_json_error(['message' => 'Plataforma web: usa la compra en WooCommerce.']);
+}
+
+  if (!$productId) wp_send_json_error(['message'=>'Producto inválido.']);
+  if ($platform === 'ios' && empty($receipt))        wp_send_json_error(['message'=>'Recibo iOS faltante.']);
+  if ($platform === 'android' && empty($purchaseToken)) wp_send_json_error(['message'=>'Token de compra Android faltante.']);
+
+  $credits = 0;
+  if ($productId === 'creditos_smartcards_1')  $credits = 1;
+  if ($productId === 'creditos_smartcards_5')  $credits = 5;
+  if ($productId === 'creditos_smartcards_10') $credits = 10;
+  if ($credits <= 0) wp_send_json_error(['message'=>'SKU desconocido.']);
+
+  $user_id = get_current_user_id();
+  $current = (int) get_user_meta($user_id, 'smartcards_credits', true);
+  update_user_meta($user_id, 'smartcards_credits', $current + $credits);
+
+  add_user_meta($user_id, 'sc_iap_log', [
+    'time'          => current_time('mysql'),
+    'productId'     => $productId,
+    'platform'      => $platform,
+    'transactionId' => $transactionId,
+    'purchaseToken' => $purchaseToken,
+    'receipt_len'   => $receipt ? strlen(maybe_serialize($receipt)) : 0,
+  ]);
+
+  wp_send_json_success(['message'=>'Créditos acreditados']);
+}
+
+// Normaliza los args de wc_price para evitar "Undefined array key 'in_span'"
+add_filter('wc_price_args', function($args){
+  $defaults = array(
+    'ex_tax_label'       => false,
+    'currency'           => get_woocommerce_currency(),
+    'decimal_separator'  => wc_get_price_decimal_separator(),
+    'thousand_separator' => wc_get_price_thousand_separator(),
+    'decimals'           => wc_get_price_decimals(),
+    'price_format'       => get_woocommerce_price_format(),
+    'currency_symbol'    => get_woocommerce_currency_symbol(),
+    'in_span'            => true, // 👈 clave faltante en algunos filtros antiguos
+  );
+  // Combina sin pisar lo que ya venga:
+  return wp_parse_args( $args, $defaults );
+}, 99);
+
+// Ruta base del plugin (más portable que __DIR__ a futuro)
+if ( ! defined('SMARTCARDS_PLUGIN_DIR') ) {
+  define('SMARTCARDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+if ( ! defined('SMARTCARDS_PLUGIN_URL') ) {
+  define('SMARTCARDS_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+
+/**
+ * (Compatibilidad) Si en algún archivo antiguo se usa SC_PLUGIN_DIR,
+ * lo “alias” apuntando a SMARTCARDS_PLUGIN_DIR para evitar fatales.
+ */
+if ( ! defined('SC_PLUGIN_DIR') ) {
+  define('SC_PLUGIN_DIR', SMARTCARDS_PLUGIN_DIR);
+}
+
+/**
+ * Carga segura de shortcodes.
+ * - Verifica existencia del archivo
+ * - Evita fatales en producción
+ * - Muestra aviso en el admin si falta el archivo
+ */
+add_action('plugins_loaded', function () {
+    $shortcodes_file = SC_PLUGIN_DIR . 'includes/shortcodes.php';
+
+    if ( file_exists( $shortcodes_file ) ) {
+        require_once $shortcodes_file; // ← tu línea original, pero con ruta segura
+    } else {
+        // Aviso solo para administradores
+        if ( is_admin() ) {
+            add_action('admin_notices', function () use ($shortcodes_file) {
+                echo '<div class="notice notice-error"><p><strong>SmartCards Plugin:</strong> No se encontró <code>' . esc_html( $shortcodes_file ) . '</code>. Verifica la ruta.</p></div>';
+            });
+        }
+        // Opcional: registra un log para debug
+        if ( function_exists('error_log') ) {
+            error_log('[SmartCards] Faltante: ' . $shortcodes_file);
+        }
+    }
+}, 5); // prioridad baja: se carga temprano
+
+//Encolar el CSS/JS del diagnostico
+add_action('wp_enqueue_scripts', function () {
+    // Carga solo si el contenido tiene el shortcode
+    if (is_singular() && has_shortcode(get_post_field('post_content', get_the_ID()), 'sc_iap_diag')) {
+        wp_enqueue_style(
+            'sc-iap-diag',
+            plugins_url('includes/assets/css/sc-iap-diag.css', __FILE__),
+            [],
+            '1.0'
+        );
+        wp_enqueue_script(
+            'sc-iap-diag',
+            plugins_url('includes/assets/js/sc-iap-diag.js', __FILE__),
+            [],
+            '1.0',
+            true
+        );
+    }
+});
+
+// GET /wp-json/smartcards/v1/credits/{id} 
+// Crea una puerta de entrada (endpoint REST) en tu WordPress para leer los créditos de un usuario.
+add_action('rest_api_init', function () {
+  register_rest_route('smartcards/v1', '/credits/(?P<id>\d+)', [
+    'methods'  => WP_REST_Server::READABLE,
+    'args'     => [
+      'id' => [
+        'description'       => __('User ID', 'smartcards'),
+        'type'              => 'integer',
+        'required'          => true,
+        'validate_callback' => function($value) {
+          return is_numeric($value) && (int)$value > 0;
+        },
+      ],
+    ],
+    'permission_callback' => function (WP_REST_Request $req) {
+      $uid = (int) $req['id'];
+
+      // ✅ Si usas JWT: asume que el usuario ya está autenticado.
+      // Permite al propio usuario o a un admin/manager ver créditos.
+      if (is_user_logged_in()) {
+        $current_id = get_current_user_id();
+        if ($current_id === $uid || current_user_can('manage_options') || current_user_can('list_users')) {
+          return true;
+        }
+      }
+
+      // También puedes permitir con un token propio (ej. en header)
+      // $token = $req->get_header('x-smartcards-token'); // TODO: validar
+
+      return new WP_Error('forbidden', __('No tienes permisos para ver estos créditos.', 'smartcards'), ['status' => 403]);
+    },
+    'callback' => function (WP_REST_Request $req) {
+      $uid = (int) $req['id'];
+      $user = get_user_by('ID', $uid);
+
+      if (!$user) {
+        return new WP_Error('invalid_user', __('Usuario no válido', 'smartcards'), ['status' => 404]);
+      }
+
+      $credits = (int) get_user_meta($uid, 'smartcards_credits', true);
+      $used    = (int) get_user_meta($uid, 'smartcards_credits_used', true);
+      $updated = get_user_meta($uid, 'smartcards_credits_updated_at', true);
+
+      $payload = [
+        'user_id'    => $uid,
+        'credits'    => $credits,
+        'used'       => $used,
+        'updated_at' => $updated ?: null,
+      ];
+
+      return rest_ensure_response($payload);
+    },
+  ]);
+});
+
+//Crear endpoint en WordPress /smartcards/v1/register
+add_action('rest_api_init', function () {
+    register_rest_route('smartcards/v1', '/register', [
+        'methods'  => 'POST',
+        'callback' => 'sc_register_user',
+        'permission_callback' => '__return_true'
+    ]);
+});
+
+function sc_register_user($req) {
+    $email = sanitize_email($req['email']);
+    $pass  = sanitize_text_field($req['password']);
+
+    if (!is_email($email)) {
+        return new WP_Error('invalid_email', 'Email inválido', ['status' => 400]);
+    }
+
+    if (email_exists($email)) {
+        return new WP_Error('email_exists', 'Este correo ya está registrado.', ['status' => 400]);
+    }
+
+    $user_id = wp_create_user($email, $pass, $email);
+
+    if (is_wp_error($user_id)) {
+        return new WP_Error('create_failed', $user_id->get_error_message(), ['status' => 400]);
+    }
+
+    // Autologin → crear token JWT automáticamente
+    $token = sc_generate_jwt_token($email, $pass);
+
+    return [
+        'success' => true,
+        'token'   => $token,
+        'user_id' => $user_id
+    ];
+}
+
+function sc_generate_jwt_token($email, $password) {
+    $response = wp_remote_post(home_url('/wp-json/jwt-auth/v1/token'), [
+        'body' => [
+            'username' => $email,
+            'password' => $password
+        ]
+    ]);
+
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    return $body['token'] ?? null;
+}
+
+// Crear endpoint para obtener las Smart Cards del usuario logueado
+add_action('rest_api_init', function () {
+    register_rest_route('smartcards/v1', '/my-cards', [
+        'methods'  => 'GET',
+        'callback' => 'sc_get_my_cards',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ]);
+});
+
+/**
+ * Endpoint: /wp-json/smartcards/v1/my-cards
+ * Devuelve las Smart Cards del usuario logueado
+ * Fuente REAL: user_meta smartcards_perfiles_urls
+ */
+function sc_get_my_cards(WP_REST_Request $request) {
+
+    $user_id = get_current_user_id();
+
+    if (!$user_id) {
+        return new WP_REST_Response([
+            'success' => false,
+            'message' => 'No autorizado'
+        ], 401);
+    }
+
+    // 📦 Obtener perfiles desde user_meta
+    $perfiles = get_user_meta($user_id, 'smartcards_perfiles_urls', true);
+
+    if (!is_array($perfiles)) {
+        $perfiles = [];
+    }
+
+    $cards = [];
+
+    foreach ($perfiles as $index => $perfil) {
+
+        // Seguridad básica
+        $url   = isset($perfil['url']) ? esc_url_raw($perfil['url']) : '';
+        $name  = isset($perfil['nombre_completo']) ? sanitize_text_field($perfil['nombre_completo']) : '';
+        $photo = isset($perfil['foto_perfil']) ? esc_url_raw($perfil['foto_perfil']) : '';
+
+        if (!$url || !$name) {
+            continue;
+        }
+
+        $cards[] = [
+            'id'          => $index + 1,        // ID lógico (no post_id)
+            'name'        => $name,
+            'photo'       => $photo ?: '',
+            'profile_url' => $url,
+            'status'      => 'active',          // En tu flujo actual siempre es activo
+        ];
+    }
+
+    return new WP_REST_Response($cards, 200);
+}
+
+/**
+ * =========================================================
+ * REGISTRO DEL ENDPOINT REST PARA ELIMINAR SMART CARDS
+ * =========================================================
+ *
+ * Este endpoint se usa desde la app móvil (React Native)
+ * para eliminar completamente una Smart Card del usuario.
+ *
+ * Ruta final:
+ *   POST /wp-json/smartcards/v1/delete-card
+ */
+add_action('rest_api_init', function () {
+  register_rest_route('smartcards/v1', '/delete-card', [
+    'methods'  => 'POST',
+    'callback' => 'sc_delete_smartcard_rest',
+    'permission_callback' => function () {
+      return is_user_logged_in();
+    },
+  ]);
+});
+
+function sc_delete_smartcard_rest(WP_REST_Request $request) {
+
+  $user_id = get_current_user_id();
+  if (!$user_id) {
+    return new WP_REST_Response(['message' => 'No autorizado'], 401);
+  }
+
+  $perfil_url = esc_url_raw($request->get_param('perfil_url'));
+  if (!$perfil_url) {
+    return new WP_REST_Response(['message' => 'URL no recibida'], 400);
+  }
+
+  // Canonizar URL
+  $perfil_url = sc_canonicalize_url($perfil_url);
+
+  // 1️⃣ Eliminar página pública
+  $page_id = url_to_postid($perfil_url);
+  if ($page_id) {
+    wp_delete_post($page_id, true);
+  }
+
+  // 2️⃣ Eliminar foto de perfil
+  $foto_perfil_id = (int) get_user_meta($user_id, 'smartcards_foto_perfil_id', true);
+  if ($foto_perfil_id) {
+    wp_delete_attachment($foto_perfil_id, true);
+    delete_user_meta($user_id, 'smartcards_foto_perfil_id');
+  }
+
+  // 3️⃣ Eliminar foto de portada
+  $foto_portada_id = (int) get_user_meta($user_id, 'smartcards_foto_portada_id', true);
+  if ($foto_portada_id) {
+    wp_delete_attachment($foto_portada_id, true);
+    delete_user_meta($user_id, 'smartcards_foto_portada_id');
+  }
+
+  // 4️⃣ Eliminar VCF
+  $vcf_id = (int) get_user_meta($user_id, 'smartcards_vcf_attachment_id', true);
+  if ($vcf_id) {
+    wp_delete_attachment($vcf_id, true);
+    delete_user_meta($user_id, 'smartcards_vcf_attachment_id');
+  }
+
+  // 5️⃣ Eliminar del listado del usuario
+  $perfiles = get_user_meta($user_id, 'smartcards_perfiles_urls', true);
+  if (is_array($perfiles)) {
+    $updated = [];
+    foreach ($perfiles as $item) {
+      if (!isset($item['url']) || !sc_url_matches($item['url'], $perfil_url)) {
+        $updated[] = $item;
+      }
+    }
+    update_user_meta($user_id, 'smartcards_perfiles_urls', $updated);
+  }
+
+  return new WP_REST_Response([
+    'success' => true,
+    'message' => 'Smart Card eliminada correctamente'
+  ], 200);
+}
+
+add_action('template_redirect', function(){
+    if (is_page()) {
+        global $post;
+
+        if ($post && strpos($post->post_content, 'perfil-publico') !== false) {
+
+            if (!defined('DONOTCACHEPAGE')) {
+                define('DONOTCACHEPAGE', true);
+            }
+
+            if (!defined('DONOTCACHEDB')) {
+                define('DONOTCACHEDB', true);
+            }
+
+            if (!defined('DONOTCACHEOBJECT')) {
+                define('DONOTCACHEOBJECT', true);
+            }
+        }
+    }
+});
+
+add_filter('the_content', function($content){
+
+    if (!is_page()) {
+        return $content;
+    }
+
+    global $post;
+
+    if (!$post) {
+        return $content;
+    }
+
+    // Solo aplicar si es un perfil (tiene owner)
+    $owner = get_post_meta($post->ID, 'sc_owner_user_id', true);
+
+    if (!$owner) {
+        return $content;
+    }
+
+    // Si ya tiene atributo, no duplicar
+    if (strpos($content, 'data-sc-profile-id') !== false) {
+        return $content;
+    }
+
+    // Inyectar atributo en el div principal
+    $content = str_replace(
+        'class="perfil-publico"',
+        'class="perfil-publico" data-sc-profile-id="' . esc_attr($post->ID) . '"',
+        $content
+    );
+
+    return $content;
+}, 20);
+
+add_filter('the_content', function($content){
+
+    if (!is_page()) {
+        return $content;
+    }
+
+    global $post;
+
+    if (!$post) {
+        return $content;
+    }
+
+    $owner = get_post_meta($post->ID, 'sc_owner_user_id', true);
+
+    if (!$owner) {
+        return $content;
+    }
+
+    // Solo si no tiene ya el atributo
+    if (strpos($content, 'data-sc-event="button_click"') !== false) {
+        return $content;
+    }
+
+    // Inyectar en botones sociales
+    $content = preg_replace(
+        '/class="btn-red-social ([^"]+)"/',
+        'class="btn-red-social $1" data-sc-event="button_click" data-sc-button="$1"',
+        $content
+    );
+
+    return $content;
+
+}, 21);
+
+add_filter('template_include', 'sc_load_profile_template');
+
+function sc_load_profile_template($template){
+
+    if (is_singular('smartcards')) {
+
+        global $post;
+
+        $source = get_post_meta($post->ID, 'sc_source', true);
+
+        // Solo perfiles creados desde la app
+        if ($source === 'app') {
+
+            $plugin_template = plugin_dir_path(__FILE__) . 'templates/profile-template.php';
+
+            if (file_exists($plugin_template)) {
+                return $plugin_template;
+            }
+
+        }
+
+    }
+
+    return $template;
+}

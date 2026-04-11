@@ -1,0 +1,1555 @@
+:root:not([data-font-loaded]) {
+  --sc-font-family: "Montserrat", sans-serif;
+}
+
+#smartcards-form {
+  background: #fafafa;
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto; /* Centrar */
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  font-family: sans-serif;
+}
+
+#smartcards-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+  color: #333;
+}
+
+#smartcards-form input[type="text"],
+#smartcards-form input[type="email"],
+#smartcards-form input[type="url"],
+#smartcards-form textarea,
+#smartcards-form input[type="file"] {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+#smartcards-form button {
+  background: #216fed; /* color del botón */
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#smartcards-form button:hover {
+  background: #1c5ac1;
+}
+
+.login-button {
+  background: #216fed;
+  color: #fff !important;
+  padding: 8px 16px;
+  margin-left: 10px;
+  border-radius: 5px;
+  text-decoration: none;
+}
+.login-button:hover {
+  background: #1c5ac1;
+}
+
+.dashboard-container {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.dashboard-container h2 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+/* Aplica el estilo antiguo SOLO a botones que NO usan el nuevo look */
+.dashboard-container button:not(.sc-google-btn) {
+  padding: 10px 20px;
+  background: #0073aa;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+.dashboard-container button:not(.sc-google-btn):hover { background: #005177; }
+
+
+.form-container {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+}
+
+.form-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.form-button:hover {
+  background: #0056b3;
+}
+
+.form-button.loading {
+  pointer-events: none;
+  opacity: 0.7;
+  color: #ffffff;
+}
+
+.form-button.loading .spinner {
+  display: inline-block;
+}
+
+.spinner {
+  display: none; /* oculto por defecto, solo visible en estado loading */
+  vertical-align: middle;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+.loading-text {
+  display: inline-block;
+  font-size: 12px;
+  margin-left: 8px;
+  color: #ffffff;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Contenedor de los botones de redes sociales */
+.redes-sociales {
+  display: flex;       /* Usa flexbox para organizar los botones en una fila */
+  gap: 10px;           /* Agrega un espacio de 10px entre cada icono */
+  flex-wrap: wrap;     /* Permite que los iconos se ajusten a la siguiente línea si no caben */
+  justify-content: center; /* Centra los botones horizontalmente */
+  align-items: center; /* Asegura que todos los iconos estén alineados verticalmente */
+  margin-top: 20px;    /* Agrega un margen superior para separar los iconos del contenido anterior */
+}
+
+/* Contenedor individual para cada botón de red social */
+.btn-red-social {
+  display: flex;       /* Hace que los iconos sean flexibles dentro del contenedor */
+  align-items: center; /* Asegura que el contenido dentro del botón esté centrado verticalmente */
+  justify-content: center; /* Centra el icono dentro del botón */
+  width: 55px;         /* Establece un tamaño fijo de 55px de ancho */
+  height: 55px;        /* Establece un tamaño fijo de 55px de alto */
+}
+
+/* Estilos para los íconos de redes sociales */
+.btn-red-social img {
+  width: 55px;         /* Define un ancho fijo de 55px para los íconos */
+  height: 55px;        /* Define una altura fija de 55px para los íconos */
+  transition: transform 0.2s ease-in-out; /* Agrega una animación suave cuando el usuario pasa el cursor */
+}
+
+/* Efecto de zoom al pasar el cursor sobre los íconos */
+.btn-red-social img:hover {
+  transform: scale(1.1); /* Aumenta el tamaño del ícono un 10% al hacer hover */
+}
+
+/* Estilos para el formulario de Smart Cards */
+#smartcards-form {
+  /* Color de fondo del formulario */
+  background: #fafafa;
+
+  /* Espaciado interno */
+  padding: 20px;
+
+  /* Ancho máximo (en pixeles) */
+  max-width: 600px;
+
+  /* Centrado horizontal mediante margin auto */
+  margin: 0 auto;
+
+  /* Bordes redondeados */
+  border-radius: 10px;
+
+  /* Sombra sutil alrededor del contenedor */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+  /* Fuente por defecto */
+  font-family: sans-serif;
+}
+
+#smartcards-form h3 {
+  /* Tamaño de fuente para subtítulos */
+  font-size: 18px;
+
+  /* Espacio inferior */
+  margin-bottom: 10px;
+
+  /* Color de texto */
+  color: #333;
+}
+
+#smartcards-form p {
+  /* Tamaño de fuente para párrafos */
+  font-size: 14px;
+
+  /* Margen inferior */
+  margin-bottom: 15px;
+
+  /* Color de texto secundario */
+  color: #666;
+}
+
+#smartcards-form label {
+  /* Hacer que el label ocupe todo el ancho disponible */
+  display: block;
+
+  /* Espacio debajo del label */
+  margin-bottom: 6px;
+
+  /* Negrita */
+  font-weight: bold;
+
+  /* Color de texto */
+  color: #333;
+}
+
+#smartcards-form input[type="file"] {
+  /* Ocupa todo el ancho */
+  width: 100%;
+
+  /* Espaciado interno */
+  padding: 5px;
+
+  /* Separación inferior */
+  margin-bottom: 15px;
+
+  /* Borde delgado */
+  border: 1px solid #ccc;
+
+  /* Bordes redondeados */
+  border-radius: 5px;
+}
+
+#smartcards-form button {
+  /* Color de fondo */
+  background: #216fed;
+
+  /* Color del texto */
+  color: #fff;
+
+  /* Espaciado en el botón */
+  padding: 10px 20px;
+
+  /* Quitar borde por defecto */
+  border: none;
+
+  /* Bordes redondeados */
+  border-radius: 5px;
+
+  /* Cambiar el puntero al pasar sobre el botón */
+  cursor: pointer;
+}
+
+#smartcards-form button:hover {
+  /* Cambiar color de fondo al pasar el ratón */
+  background: #1c5ac1;
+}
+
+/* ---------------------------------------------
+   Estilos para la vista del perfil público Foto del perfil - Foto de la portada
+--------------------------------------------- */
+
+/* Contenedor principal de la portada (cover) */
+.profile-cover-wrapper {
+  position: relative;
+  width: 100%;            /* Toma todo el ancho disponible */
+  max-width: 1200px;    /* Límites en pantallas grandes */
+  margin: 0 auto;         /* Centra en pantallas grandes */
+  overflow: visible;      /* deja que la foto de perfil sobresalga */
+  position: relative;     /* Para superponer la foto de perfil */
+  margin-bottom: 90px; /* Empuja el contenedor siguiente hacia abajo */
+}
+
+/* En pantallas <=1024px 
+   forzamos la portada a full width real 
+*/
+@media (max-width: 1024px) {
+  .profile-cover-wrapper {
+    /* Rompe la caja limitada del tema */
+    max-width: none;         /* Elimina el límite de 1200px */
+    width: 100vw;            /* Ocupar todo el ancho de la ventana */
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+  }
+}
+
+/* Imagen de portada ajustada */
+.cover-image {
+  width: 100%;            /* Ocupa todo el ancho del contenedor */
+  height: auto;           /* Ajuste de altura proporcional */
+  display: block;
+  object-fit: cover;      /* Recorta la imagen si sobra */
+  /* Opcionalmente, altura fija si quieres forzar la proporción 1250x481:
+     height: calc(100vw * (481 / 1250)); // Esto mantiene proporción en móviles
+  */
+}
+
+/* Envoltorio de la foto de perfil para superponer */
+.profile-image-wrapper {
+  position: absolute;
+  /* Ajusta según quieras que se superponga a la portada */
+  bottom: -65px;               /* Ajustado para que quede más grande */
+  left: 50%;
+  transform: translateX(-50%);
+  
+  z-index: 10;                 /* Para que quede delante del nombre y cargo */
+}
+
+/* Foto de perfil circular */
+.profile-image {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Contenedor de los detalles del perfil (nombre, etc.) */
+.perfil-publico {
+  text-align: center;      /* Centra todos los textos y el botón */
+  margin-top: 120px;       /* Deja espacio para la imagen más grande */
+  font-family: var(--sc-font-family);
+}
+
+.perfil-publico,
+.perfil-publico h2,
+.perfil-publico h4,
+.sc-btn-contact,
+.btn-red-social {
+  font-family: var(--sc-font-family) !important;
+}
+
+.perfil-publico h2 {
+  font-size: 24px;
+  font-weight: 700; /* Ajusta el grosor como gustes (400, 700, etc.) */
+  margin-bottom: 5px;
+  text-align: center;
+}
+
+.perfil-publico p {
+  margin: 0 0 10px;
+}
+
+/* Cargo (18px) */
+.perfil-publico h4 {
+  font-size: 18px;
+  font-weight: 400; /* o el que gustes */
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+/* Centrado del botón de contacto */
+.btn-contacto-link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.sc-btn-contact {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.3px;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  background: var(--sc-primary) !important;
+  color: var(--sc-text) !important;
+  transition: all 0.2s ease;
+  font-family: var(--sc-font-family);
+}
+
+.perfil-publico h2,
+.perfil-publico h4 {
+  color: var(--sc-text-dynamic);
+  font-family: var(--sc-font-family);
+}
+
+.theme-esencial .perfil-publico h2,
+.theme-esencial .perfil-publico h4 {
+  color: #000000 !important;
+}
+
+.sc-btn-contact:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+}
+
+#qr-container {
+  max-width: 300px; /* Máximo ancho deseado en móviles */
+  margin: 0 auto;   /* Centrado automático */
+  padding: 15px;    /* Espacio interno alrededor del QR */
+  box-sizing: border-box;
+}
+
+#qr-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 25px auto; /* margen arriba y abajo y centrado */
+  padding: 15px;
+  width: fit-content;
+  border: 2px solid #000; /* contorno negro */
+  border-radius: 15px;    /* bordes redondeados */
+  background: #ffffff;    /* fondo blanco */
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  #qr-container {
+      max-width: 80%; /* Asegura que no llegue de punta a punta en pantallas pequeñas */
+  }
+}
+
+#qr-container + div,
+#qr-container + button,
+#qr-container + span,
+#qr-container + a {
+    display: none !important;
+}
+
+/* Oculta QR dinámico solo en la página del formulario (post=11) "Cambiar el ID para otros wordpress */
+body.postid-11 #qr-container {
+  display: none !important;
+}
+
+/* Ocultar completamente QR-container y elementos internos en formulario (postid-11) */
+body.postid-11 #qr-container, 
+body.postid-11 #qr-container * {
+  display: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Estilos del popup personalizado */
+.smart-popup {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ffffff;
+  padding: 20px;
+  width: 500px; /* ✅ Mayor ancho para solucionar el desbordamiento */
+  max-width: 90%; /* Adaptativo en pantallas pequeñas */
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  z-index: 9999;
+  font-family: var(--sc-font-family);
+}
+
+.smart-popup h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.smart-popup-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px; /* Espacio entre botones */
+}
+
+.smart-popup-buttons button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+  font-size: 15px;
+  text-align: center;
+}
+
+.smart-popup-buttons .btn-approve {
+  background-color: #216fed;
+}
+
+.smart-popup-buttons .btn-error {
+  background-color: #e74c3c;
+}
+
+.smart-popup-buttons button:hover {
+  opacity: 0.9;
+}
+
+.mi-smartcards {
+  margin-top: 20px;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.mi-smartcards button {
+  background-color: #216fed;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-bottom: 10px; /* Añadir separación entre botones */
+}
+
+.mi-smartcards button:hover {
+  background-color: #1c5ac1;
+}
+
+/* ----------------------------------
+   Slider visual para Smart Cards
+---------------------------------- */
+
+/* Contenedor principal que permite deslizar tarjetas horizontalmente */
+.smartcards-slider {
+  display: flex;
+  flex-wrap: nowrap; /* evita que salten a una nueva línea */
+  overflow-x: auto; /* habilita desplazamiento horizontal */
+  gap: 15px;
+  padding: 10px;
+  margin-top: 20px;
+  -webkit-overflow-scrolling: touch; /* desplazamiento suave en móviles */
+}
+
+/* Estilos individuales para cada tarjeta */
+.smartcard-item {
+  flex: 0 0 280px; /* Ancho aumentado para alojar más botones */
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 15px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+/* Imagen circular del perfil */
+.smartcard-photo img {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;       /* Foto circular */
+  object-fit: cover;        /* Ajuste perfecto dentro del círculo */
+  border: 3px solid #f1f1f1; /* Borde sutil */
+  margin-bottom: 10px;
+}
+
+/* +++++++++++++++++++++++++++++++++++++++++
+   Centrar la foto de perfil dentro de la tarjeta
++++++++++++++++++++++++++++++++++++++++++ */
+.smartcard-photo {
+  /* convierte el contenedor en flex y centra su contenido */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.smartcard-photo img {
+  /* conserva el espacio inferior pero centra horizontalmente */
+  margin: 0 auto 10px;
+}
+
+/* Nombre completo del perfil */
+.smartcard-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+/* Botón para ver perfil */
+.smartcard-btn {
+  padding: 8px 15px;
+  background-color: #216fed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px; /* ligeramente más pequeño para mejor ajuste */
+  flex: 1;
+  white-space: nowrap; /* evita saltos de texto en botones */
+}
+
+/* Efecto hover en el botón */
+.smartcard-btn:hover {
+  opacity: 0.9;
+  background-color: #1c5ac1;
+}
+
+/* Ocultar la barra de desplazamiento para un mejor aspecto visual */
+.smartcards-slider::-webkit-scrollbar {
+  display: none;            /* Chrome, Safari, Opera */
+}
+
+.smartcards-slider {
+  -ms-overflow-style: none; /* IE y Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+
+/* Contenedor flexible para botones (más limpio visualmente) */
+.smartcard-buttons {
+  display: flex;
+  justify-content: space-between; /* Distribuye botones uniformemente */
+  align-items: center;
+  gap: 5px;
+  margin-top: 15px;
+}
+
+.smartcard-btn.share-btn {
+  background-color: #01a350;
+  color: #fff;
+}
+
+.smartcard-btn.share-btn:hover {
+  background-color: #018940;
+}
+
+/* Popup visual de compartir */
+.share-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.share-popup {
+  background: #fff;
+  padding: 20px;
+  border-radius: 15px;
+  text-align: center;
+  width: 90%;
+  max-width: 300px;
+}
+
+.share-popup h3 {
+  margin-bottom: 20px;
+}
+
+.share-popup button {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.share-option.whatsapp {
+  background-color: #25D366;
+  color: #fff;
+}
+
+.share-option.copiar {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.share-option.email {
+  background-color: #f39c12;
+  color: #fff;
+}
+
+.close-popup {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Estilos para el botón de los tres puntitos */
+.smartcard-btn.options-btn {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.smartcard-btn.options-btn:hover {
+  background-color: #ddd;
+}
+
+/* Popup de opciones adicionales */
+.options-popup-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.options-popup {
+  background: #fff;
+  border-radius: 10px;
+  width: 90%; max-width: 300px;
+  text-align: center;
+}
+
+.options-popup button {
+  padding: 15px;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #ddd;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: transparent;
+}
+
+.options-popup button.delete {
+  color: #ff3b30; /* rojo para eliminar */
+}
+
+.options-popup button.cancel {
+  color: #007aff; /* azul para cancelar */
+  font-weight: bold;
+}
+
+.options-popup button:last-child {
+  border-bottom: none;
+}
+
+/* Centrar checkbox en celdas de notificaciones */
+table.wp-list-table.fixed td input[type="checkbox"] {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Ajustes de padding para que no queden “apretados” */
+table.wp-list-table.fixed th,
+table.wp-list-table.fixed td {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+/* Botón verde destacado */
+.sc-button-featured {
+  display: inline-block;
+  background: #01a350;
+  color: #fff !important;
+  padding: 8px 14px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+}
+.sc-button-featured:hover {
+  opacity: 0.9;
+}
+
+/* Título del carrusel */
+h2 {
+  margin-top: 30px;
+  font-size: 20px;
+  color: #0188fd;
+}
+
+/* Carrusel: ajusta padding de cada producto */
+.sc-products-carousel .sc-product {
+  padding: 10px;
+}
+
+/* Grid de perfiles */
+.sc-profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+.sc-profile-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.sc-profile-card img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
+}
+.sc-profile-card h3 {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+.sc-profile-card .button {
+  margin: 5px 3px;
+}
+
+/* --------- Switch de Idioma --------- */
+.sc-lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* 1) Ocultamos completamente el checkbox nativo */
+.sc-lang-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  /* así desaparece el cuadrito que ves */
+}
+
+/* Crea el contenedor del switch */
+.sc-lang-toggle .slider {
+  position: relative;
+  width: 50px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 12px;
+  transition: background-color 0.2s ease;
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+/* El “punto” del switch */
+.sc-lang-toggle .slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  top: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+/* Cuando esté activo, fondo verde y mueve el punto */
+.sc-lang-toggle input:checked + .slider {
+  background-color: #01a350; /* verde SmartCards */
+}
+.sc-lang-toggle input:checked + .slider::before {
+  transform: translateX(26px);
+}
+
+/* Etiqueta junto al switch */
+.sc-lang-toggle label[for="sc_lang_toggle"] {
+  font-size: 1rem;
+  color: #333;
+}
+
+/* Asegura que los enlaces .smartcard-btn se comporten igual que los botones */
+.smartcard-buttons a.smartcard-btn {
+  display: inline-flex;          /* Igual que los botones */
+  align-items: center;           /* Centrado vertical del texto */
+  justify-content: center;       /* Centrado horizontal */
+  padding: 8px 15px;             /* Mismos espa­ciados que los botones */
+  font-size: 13px;               /* Igual tamaño de fuente */
+  line-height: 1;                /* Evita saltos inesperados */
+  min-width: auto;               /* Se adapta al contenido */
+  text-decoration: none;         /* Quita subrayado */
+}
+
+/* Título de la sección “Historial de Activaciones” */
+.sc-activations-title {
+  /* Espacio arriba de 2rem y abajo de 1rem para separar de otros bloques */
+  margin: 2rem 0 1rem;
+}
+
+/* Lista con las URLs de activación */
+.sc-activations-list {
+  /* Margen inferior para separar la lista del siguiente contenido */
+  margin-bottom: 2rem;
+  /* Puntos como marcador de lista */
+  list-style: disc;
+  /* Sangría izquierda para alinear los puntos correctamente */
+  padding-left: 1.25rem;
+}
+
+/* Cada elemento de la lista dentro de Historial de Activaciones */
+.sc-activations-list li {
+  /* Espacio inferior entre cada URL para mejorar lectura */
+  margin-bottom: 0.5rem;
+}
+
+/* Mensaje cuando no hay activaciones */
+.sc-no-activations {
+  /* Margen inferior igual al de la lista para consistencia */
+  margin-bottom: 2rem;
+}
+
+/* Acciones debajo del login */
+.sc-auth-actions{ margin-top:10px; }
+
+/* Botón secundario (blanco con borde) */
+.sc-secondary-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:100%; height:46px;
+  background:#fff; color:#111827;
+  border:1px solid #d1d5db; border-radius:10px;
+  text-decoration:none; font-size:15px; font-weight:500;
+  transition: box-shadow .15s ease, transform .02s ease, border-color .15s ease;
+}
+.sc-secondary-btn:hover{ box-shadow:0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05); border-color:#c7cdd4; }
+.sc-secondary-btn:active{ transform: translateY(1px); }
+
+/* El submit verde a ancho completo para que todo quede alineado */
+#sc-login-submit{ width:100%; height:46px; font-size:16px; border-radius:10px; }
+
+/* Separa el botón de Google respecto a "Crear cuenta" */
+.sc-auth-actions { margin-top: 10px; margin-bottom: 12px; }
+
+/* Botón Google estilo relleno azul (brand) */
+.sc-google-btn{
+  display:flex; align-items:center; justify-content:center;
+  gap: 12px;
+  width:100%;
+  height:52px;
+  background:#1a73e8;            /* azul Google */
+  color:#fff;
+  border:0;
+  border-radius:28px;
+  text-decoration:none;
+  font-size:18px;
+  font-weight:600;
+  line-height:1;
+  box-shadow: 0 2px 0 rgba(0,0,0,.08), 0 6px 16px rgba(26,115,232,.28);
+  transition: transform .02s ease, box-shadow .15s ease, filter .15s ease;
+  margin-top: 6px;               /* un poquito más abajo del de registro */
+}
+.sc-google-btn:hover{ filter: brightness(1.04); box-shadow: 0 2px 0 rgba(0,0,0,.08), 0 8px 20px rgba(26,115,232,.34); }
+.sc-google-btn:active{ transform: translateY(1px); }
+
+/* Caja blanca para la "G" (como el botón oficial) */
+.sc-google-icon{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px;
+  background:#fff;
+  border-radius:6px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset;
+}
+.sc-google-icon svg{ width:20px; height:20px; display:block; }
+.sc-google-text{ white-space:nowrap; }
+
+/* Inputs del wp_login_form más redondeados y visibles */
+.sc-auth-card .input,
+.sc-auth-card input[type="text"],
+.sc-auth-card input[type="password"]{
+  height: 52px;
+  border-radius: 14px;      /* más redondeado */
+  border: 1.5px solid #cfd8e3;
+  padding: 12px 14px;
+  font-size: 16px;
+  background:#fff;
+}
+.sc-auth-card .input:focus,
+.sc-auth-card input[type="text"]:focus,
+.sc-auth-card input[type="password"]:focus{
+  outline: none;
+  border-color:#1a73e8;
+  box-shadow: 0 0 0 3px rgba(26,115,232,.15);
+}
+
+
+/* Enlace "Olvidaste tu contraseña" debajo del login */
+.sc-auth-forgot {
+  margin-top: 10px;
+  text-align: right; /* alineado a la derecha */
+}
+
+.sc-auth-forgot a {
+  font-size: 14px;
+  color: #1a73e8;  /* azul consistente con Google */
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sc-auth-forgot a:hover {
+  text-decoration: underline;
+}
+
+/* Stack vertical para CTAs */
+.sc-btn-stack { display: grid; gap: 12px; width: 100%; }
+.sc-btn-stack--options { margin-top: 10px; }
+
+/* Botón estilo "pill" tipo Google */
+.sc-google-btn {
+  --bg: #1a73e8; --bg-hover:#1669d6; --text:#ffffff;
+  display:flex; align-items:center; justify-content:center; gap:12px;
+  width:100%; padding:14px 18px; border:0; border-radius:999px;
+  background:var(--bg); color:var(--text); font-weight:800; font-size:18px;
+  box-shadow:0 8px 20px rgba(26,115,232,.25);
+  cursor:pointer; transition:background-color .2s ease, box-shadow .2s ease, transform .06s ease;
+}
+.sc-google-btn:hover { background:var(--bg-hover); box-shadow:0 10px 24px rgba(26,115,232,.33); }
+.sc-google-btn:active { transform: translateY(1px); }
+.sc-google-btn:focus-visible { outline: 3px solid #a7c5ff; outline-offset: 2px; }
+.sc-google-btn--primary { /* misma paleta, reservado por si quieres variantes */ }
+
+.sc-google-btn__label { white-space: nowrap; }
+
+/* Cuadro blanco con "G" simulada */
+.sc-google-btn__g {
+  width:28px; height:28px; border-radius:8px; background:#fff; flex-shrink:0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); position:relative;
+}
+.sc-google-btn__g::before{
+  content:""; position:absolute; inset:4px;
+  background:conic-gradient(#ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0);
+  -webkit-mask: radial-gradient(circle at 50% 50%, transparent 9px, #000 9px);
+          mask: radial-gradient(circle at 50% 50%, transparent 9px, #000 9px);
+  border-radius:6px;
+}
+
+/* Icono monedas dentro del botón */
+.sc-google-btn__icon { display:inline-flex; align-items:center; justify-content:center; }
+.sc-google-btn__icon svg { display:block; }
+
+/* Modo oscuro amigable */
+@media (prefers-color-scheme: dark) {
+  .sc-google-btn { box-shadow: 0 6px 18px rgba(26,115,232,.2); }
+}
+
+/* ===== Botón "pill" brillante tipo Google ===== */
+.sc-google-btn--shiny {
+  /* Gradiente saturado y glow */
+  --bg1: #2b7bff;            /* arriba */
+  --bg2: #0f5fff;            /* abajo */
+  background-image: linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+  box-shadow:
+      0 14px 30px rgba(34,116,255,.55),   /* glow exterior */
+      0 6px 16px rgba(0,0,0,.12),         /* sombra base */
+      inset 0 -2px 0 rgba(255,255,255,.12),
+      0 0 0 1px rgba(12,80,220,.08);      /* borde sutil */
+  filter: saturate(1.15);
+  color: #fff;
+}
+
+/* “Gloss” superior (reflejo) */
+.sc-google-btn--shiny::before{
+  content:"";
+  position:absolute;
+  left:8px; right:8px; top:6px;
+  height:50%;
+  border-radius:999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.48), rgba(255,255,255,0));
+  pointer-events:none;
+}
+
+/* Hover/active más luminosos */
+.sc-google-btn--shiny:hover{
+  --bg1:#3a86ff; --bg2:#146dff;
+  box-shadow:
+      0 18px 36px rgba(34,116,255,.6),
+      0 8px 18px rgba(0,0,0,.14),
+      inset 0 -2px 0 rgba(255,255,255,.16),
+      0 0 0 1px rgba(12,80,220,.1);
+}
+.sc-google-btn--shiny:active{ transform: translateY(1px) scale(.997); }
+
+/* Texto subrayado tipo Google */
+.sc-google-btn--underline .sc-google-btn__label{
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* G cuadrada con leve bisel para más “pop” */
+.sc-google-btn--shiny .sc-google-btn__g{
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    inset 0 0 0 1px rgba(0,0,0,.08),
+    0 2px 8px rgba(0,0,0,.15);
+}
+
+/* Modo oscuro: conserva brillo sin quemar */
+@media (prefers-color-scheme: dark) {
+  .sc-google-btn--shiny{
+    box-shadow:
+      0 14px 30px rgba(34,116,255,.5),
+      0 6px 14px rgba(0,0,0,.4),
+      inset 0 -2px 0 rgba(255,255,255,.1),
+      0 0 0 1px rgba(12,80,220,.15);
+  }
+}
+
+/* Variante verde para botones tipo Google */
+.sc-google-btn--green {
+  --bg: #01a350;
+  --bg-hover: #019347;
+  --text: #ffffff;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 8px 20px rgba(1,163,80,.35);
+}
+
+.sc-google-btn--green:hover {
+  background: var(--bg-hover);
+  box-shadow: 0 10px 24px rgba(1,163,80,.45);
+}
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* centra de arriba a abajo */
+  align-items: center;       /* centra horizontal */
+  min-height: 100%;          /* ocupa todo el alto disponible */
+}
+
+/* Estilos botón de continuar con Apple */
+/* Botón Apple estilo oficial (negro) en formato pill */
+.siwa-btn{
+  display:flex; align-items:center; justify-content:center; gap:12px;
+  width:100%; height:48px; padding:0 20px;
+  border:0; border-radius:999px; cursor:pointer;
+  background:#000; color:#fff; font-weight:800; font-size:16px; line-height:1;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 8px 20px rgba(0,0,0,.24);
+  transition: background-color .2s ease, box-shadow .2s ease, transform .06s ease;
+}
+.siwa-btn:hover{ background:#111; box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 10px 24px rgba(0,0,0,.28); }
+.siwa-btn:active{ transform: translateY(1px); }
+.siwa-btn:focus-visible{ outline: 3px solid #9bc1ff; outline-offset: 2px; }
+
+/* Ajustes de contenido */
+.siwa-icon svg{ display:block; color:#fff; }
+.siwa-label{ white-space: nowrap; }
+
+/* Tamaño compacto opcional (si lo necesitas en otra vista) */
+.siwa-btn.siwa--sm{ height:40px; font-size:15px; gap:10px; padding:0 16px; }
+
+/* Modo oscuro mantiene negros sin quemar (opcional) */
+@media (prefers-color-scheme: dark){
+  .siwa-btn{ box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 8px 18px rgba(0,0,0,.5); }
+}
+
+/* ==== Modal revisión: animación desde arriba hacia el centro ==== */
+.sc-modal-overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.45);
+  display:flex; align-items:flex-start; justify-content:center;
+  padding-top:24px; z-index:9999;
+  pointer-events:none;              /* ← deja pasar clics */
+}
+
+.sc-modal{
+  width:min(680px, 92vw);
+  background:#fff; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+  padding:22px;
+  opacity:0; transform:translateY(-40px) scale(.98);
+  animation:scDropIn .45s cubic-bezier(.2,.8,.2,1) forwards;
+  pointer-events:auto;              /* ← el modal interactúa */
+}
+
+@keyframes scDropIn {
+  60%{ opacity:1; transform:translateY(12vh) scale(1); }
+  100%{ opacity:1; transform:translateY(18vh) scale(1); } /* posición ~centro */
+}
+
+.sc-modal-desc{
+  margin:0 0 16px; font-size:18px; line-height:1.35; color:#1f2937;
+}
+
+.sc-modal-btns{
+  display:flex; gap:16px; flex-wrap:wrap;
+}
+
+.sc-btn{
+  appearance:none; border:0; border-radius:12px; padding:14px 18px;
+  font-weight:800; cursor:pointer; font-size:18px;
+}
+
+.sc-btn-copy{ background:#2563eb; color:#fff; }
+.sc-btn-email{ background:#e24a3b; color:#fff; }
+
+.sc-btn[disabled]{ opacity:.7; pointer-events:none; }
+
+/* Archivo sugerido: smartcards-plugin/includes/assets/css/sc-iap-diag.css */
+.sc-iap-diag{
+  max-width:680px;margin:18px auto;padding:16px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,.06);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif
+}
+.sc-iap-diag h3{margin:0 0 10px;font-size:18px}
+.sc-iap-diag button{display:inline-block;padding:10px 14px;border-radius:8px;border:0;background:#1a73e8;color:#fff;cursor:pointer}
+.sc-iap-diag pre{white-space:pre-wrap;background:#0b1020;color:#cde3ff;padding:12px;border-radius:8px;margin-top:12px;min-height:120px}
+
+/* Quitar subrayado en botones tipo enlace */
+a.sc-google-btn,
+a.sc-google-btn:hover,
+a.sc-google-btn:focus,
+a.sc-google-btn:active {
+  text-decoration: none !important;
+}
+
+.sc-google-btn__label {
+  text-decoration: none !important;
+}
+
+.sc-profile-analytics{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 0;
+}
+
+.sc-analytics-header h2{
+  margin: 0 0 6px 0;
+  font-size: 36px;
+  line-height: 1.1;
+}
+
+.sc-analytics-subtitle{
+  margin: 0 0 18px 0;
+  font-size: 18px;
+  opacity: .9;
+}
+
+.sc-analytics-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 12px 0 22px 0;
+}
+
+@media (max-width: 900px){
+  .sc-analytics-grid{ grid-template-columns: 1fr; }
+}
+
+.sc-analytics-card{
+  background: #fff;
+  border: 1px solid #e7e7e7;
+  border-radius: 10px;
+  padding: 18px 18px;
+  box-shadow: 0 6px 22px rgba(0,0,0,.06);
+}
+
+.sc-analytics-card-title{
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.sc-analytics-card-value{
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sc-analytics-section-title{
+  font-size: 28px;
+  margin: 14px 0 10px 0;
+}
+
+.sc-analytics-table-wrap{
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 6px 22px rgba(0,0,0,.06);
+}
+
+.sc-analytics-table{
+  margin: 0 !important;
+  border: 0 !important;
+}
+
+.sc-analytics-actions{
+  margin-top: 16px;
+}
+
+.sc-analytics-back-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== SMART CARDS ANALYTICS – WHITE PREMIUM ===== */
+
+.sc-profile-analytics{
+  max-width:1100px;
+  margin:0 auto;
+  padding:30px 20px;
+  background:#ffffff;
+  color:#111;
+}
+
+.sc-analytics-header h2{
+  font-size:34px;
+  margin-bottom:6px;
+  color:#111;
+  font-weight:800;
+}
+
+.sc-analytics-subtitle{
+  font-size:17px;
+  color:#555;
+  margin-bottom:30px;
+}
+
+.sc-analytics-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:20px;
+  margin-bottom:40px;
+}
+
+.sc-analytics-card{
+  background:#fff;
+  border:1px solid rgba(1,163,80,.25);
+  border-radius:16px;
+  padding:25px;
+  text-align:center;
+  transition:.3s ease;
+  box-shadow:0 6px 20px rgba(0,0,0,.05);
+}
+
+.sc-analytics-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 30px rgba(1,163,80,.18);
+  border-color:#01A350;
+}
+
+.sc-analytics-card-title{
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  color:#666;
+  margin-bottom:10px;
+}
+
+.sc-analytics-card-value{
+  font-size:42px;
+  font-weight:900;
+  color:#01A350;
+}
+
+.sc-analytics-section-title{
+  font-size:22px;
+  margin:35px 0 15px;
+  font-weight:800;
+  color:#111;
+}
+
+.sc-analytics-table-wrap{
+  background:#fff;
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,.05);
+  box-shadow:0 6px 20px rgba(0,0,0,.05);
+}
+
+.sc-analytics-table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.sc-analytics-table th{
+  background:#01A350;
+  color:#fff;
+  padding:14px;
+  font-weight:700;
+  text-align:left;
+}
+
+.sc-analytics-table td{
+  padding:14px;
+  border-bottom:1px solid #f2f2f2;
+}
+
+.sc-analytics-table tr:hover{
+  background:rgba(1,163,80,.06);
+}
+
+.sc-analytics-empty{
+  text-align:center;
+  padding:30px;
+  font-size:16px;
+  color:#777;
+}
+
+.sc-analytics-back-btn{
+  background:#01A350;
+  color:#fff !important;
+  padding:12px 26px;
+  border-radius:30px;
+  font-weight:700;
+  text-decoration:none;
+  transition:.3s ease;
+  display:inline-block;
+}
+
+.sc-analytics-back-btn:hover{
+  background:#029e45;
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(1,163,80,.25);
+}
+
+/* === Chart container elegante blanco === */
+.sc-chart-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    margin-bottom: 40px;
+}
+
+/* Botones filtro gráfico */
+.sc-chart-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.sc-chart-btn {
+    background: #01A350;
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+.sc-chart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(1,163,80,0.25);
+}
+
+.sc-chart-btn.active {
+    background: #018a44;
+}
+
+.sc-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+:root {
+  --sc-primary: #01a350;
+  --sc-text: #ffffff;
+  --sc-text-dynamic: #000000;
+  --user-color: #01a350;
+}
+
+.theme-esencial {
+  --sc-primary: #01a350;
+  --sc-text: #ffffff;
+  --sc-text-dynamic: #000000;
+}
+
+.theme-dark {
+  --sc-primary: #ffffff;
+  --sc-text: #000000;
+  --sc-text-dynamic: #ffffff;
+}
+
+.theme-corporativo {
+  --sc-primary: var(--user-color);
+  --sc-text: #ffffff;
+  --sc-text-dynamic: var(--user-color);
+}
+
+.theme-corporativo .btn-red-social {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-corporativo .btn-red-social img,
+.theme-corporativo .btn-red-social svg.icon-social {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 12px;
+}
+
+.theme-premium {
+  --sc-primary: var(--user-color);
+  --sc-text: #ffffff;
+  --sc-text-dynamic: var(--user-color);
+}
+
+.theme-premium .btn-red-social svg.icon-social {
+  width: 34px;
+  height: 34px;
+  display: block;
+  fill: var(--sc-primary);
+}

@@ -1,0 +1,157 @@
+:root {
+  --sc-primary: #01a350;
+  --sc-text: #ffffff;
+  --sc-text-dynamic: #000000;
+  --user-color: #01a350;
+}
+
+.theme-esencial {
+  --sc-primary: #01a350;
+  --sc-text: #ffffff;
+  --sc-text-dynamic: #000000;
+}
+
+.theme-dark {
+  --sc-primary: #ffffff;
+  --sc-text: #000000;
+  --sc-text-dynamic: #ffffff;
+}
+
+.theme-corporativo {
+  --sc-primary: var(--user-color);
+  --sc-text: #ffffff;
+  --sc-text-dynamic: var(--user-color);
+}
+
+.theme-premium {
+  --sc-primary: var(--user-color);
+  --sc-text: #ffffff;
+  --sc-text-dynamic: var(--user-color);
+}
+
+body.smartcards-profile {
+  margin: 0;
+  background: #f4f7fb;
+  color: #0f172a;
+  font-family: var(--sc-font-family);
+}
+
+.profile-cover-wrapper {
+  position: relative;
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.cover-image {
+  width: 100%;
+  height: 230px;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-image-wrapper {
+  position: absolute;
+  left: 32px;
+  bottom: -44px;
+}
+
+.profile-image {
+  width: 92px;
+  height: 92px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.2);
+}
+
+.perfil-publico {
+  max-width: 840px;
+  margin: 52px auto 24px;
+  padding: 24px 28px;
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+  font-family: var(--sc-font-family);
+}
+
+.perfil-publico h2 {
+  margin: 0 0 6px;
+  font-size: 30px;
+  letter-spacing: 0.2px;
+  color: var(--sc-text-dynamic);
+  font-family: var(--sc-font-family);
+}
+
+.perfil-publico h4 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: var(--sc-text-dynamic);
+  font-weight: 700;
+  font-family: var(--sc-font-family);
+}
+
+.theme-esencial .perfil-publico h2,
+.theme-esencial .perfil-publico h4 {
+  color: #000000 !important;
+}
+
+.perfil-publico p {
+  margin: 0 0 16px;
+  color: #334155;
+}
+
+.btn-contacto-link.sc-btn-contact {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 350px;
+  max-width: 100%;
+  padding: 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+  background: var(--sc-primary) !important;
+  color: var(--sc-text) !important;
+  transition: all 0.2s ease;
+  font-family: var(--sc-font-family);
+}
+
+.btn-contacto-link.sc-btn-contact:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.redes-sociales {
+  margin: 18px 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.theme-corporativo .btn-red-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border: none !important;
+  border-radius: 4px;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-corporativo .btn-red-social img,
+.theme-corporativo .btn-red-social svg.icon-social {
+  width: 30px;
+  height: 30px;
+  display: block;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 12px;
+}
+
+#qr-container {
+  margin: 16px auto 8px;
+}

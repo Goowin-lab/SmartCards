@@ -1,0 +1,8 @@
+# Logs
+node_modules/
+.expo/
+dist/
+build/
+.env
+.DS_Store
+*.log
