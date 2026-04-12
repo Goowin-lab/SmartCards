@@ -2264,3 +2264,5 @@ function sc_load_profile_template($template){
 
     return $template;
 }
+
+// test git sync
