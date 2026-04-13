@@ -74,10 +74,21 @@ update_post_meta($post_id, 'company', sanitize_text_field($company));
 // Marcar origen para diferenciar APP vs WEB
 update_post_meta($post_id, 'sc_source', 'app');
 
+  $perfil_url = sc_get_profile_permalink( $post_id );
+
   return [
     'success'     => true,
+    'perfil_url'  => $perfil_url,
+    'permalink'   => $perfil_url,
     'smartcard_id'=> $post_id,
     'status'      => 'draft',
-    'message'     => 'Smart Card creada. Completa tu perfil para publicarla.'
+    'message'     => 'Smart Card creada. Completa tu perfil para publicarla.',
+    'data'        => [
+      'perfil_url'   => $perfil_url,
+      'public_url'   => $perfil_url,
+      'permalink'    => $perfil_url,
+      'smartcard_id' => $post_id,
+      'status'       => 'draft',
+    ],
   ];
 }

@@ -336,19 +336,65 @@ add_filter('the_content', function ($content) {
 /* =========================================================
  * DESCARGA SEGURA DE VCF (WEB + APP)
  * ========================================================= */
-add_action('init', function () {
+if ( ! function_exists( 'sc_register_descargar_vcf_rewrite' ) ) {
+function sc_register_descargar_vcf_rewrite() {
   add_rewrite_rule(
     '^descargar-vcf/([0-9]+)/?$',
     'index.php?descargar_vcf=1&user_id=$matches[1]',
     'top'
   );
-});
+}
+}
+
+add_action('init', 'sc_register_descargar_vcf_rewrite');
 
 add_filter('query_vars', function ($vars) {
   $vars[] = 'descargar_vcf';
   $vars[] = 'user_id';
   return $vars;
 });
+
+register_activation_hook(__FILE__, function() {
+  $rewrite_version = 'smartcards-rewrite-2026-04-13';
+
+  if ( function_exists( 'sc_register_smartcards_post_type' ) ) {
+    sc_register_smartcards_post_type();
+  }
+
+  if ( function_exists( 'sc_register_descargar_vcf_rewrite' ) ) {
+    sc_register_descargar_vcf_rewrite();
+  }
+
+  flush_rewrite_rules();
+  update_option( 'smartcards_rewrite_version', $rewrite_version );
+});
+
+register_deactivation_hook(__FILE__, function() {
+  flush_rewrite_rules();
+});
+
+if ( ! function_exists( 'sc_maybe_flush_rewrite_rules_once' ) ) {
+function sc_maybe_flush_rewrite_rules_once() {
+  $rewrite_version = 'smartcards-rewrite-2026-04-13';
+
+  if ( get_option( 'smartcards_rewrite_version' ) === $rewrite_version ) {
+    return;
+  }
+
+  if ( function_exists( 'sc_register_smartcards_post_type' ) ) {
+    sc_register_smartcards_post_type();
+  }
+
+  if ( function_exists( 'sc_register_descargar_vcf_rewrite' ) ) {
+    sc_register_descargar_vcf_rewrite();
+  }
+
+  flush_rewrite_rules( false );
+  update_option( 'smartcards_rewrite_version', $rewrite_version );
+}
+}
+
+add_action( 'init', 'sc_maybe_flush_rewrite_rules_once', 20 );
 
 add_action('template_redirect', function () {
   if (!get_query_var('descargar_vcf')) return;
@@ -722,7 +768,14 @@ function guardar_url_perfil(){
   
   // Recibes datos vía AJAX
   $datos = json_decode(file_get_contents('php://input'), true);
-  $nueva_url = esc_url_raw($datos['perfil_url']);
+  $nueva_url = '';
+  if ( is_array( $datos ) && ! empty( $datos['perfil_url'] ) ) {
+    $nueva_url = sc_get_live_profile_url( $datos['perfil_url'] );
+  }
+
+  if ( ! $nueva_url ) {
+    wp_send_json_error( [ 'message' => 'URL del perfil no recibida.' ], 400 );
+  }
 
   // Obtienes datos del usuario actual
   $user_id = get_current_user_id();
@@ -744,8 +797,21 @@ function guardar_url_perfil(){
     $perfiles_urls = [];
   }
 
-  // Evita duplicados
-  if (!in_array($perfil_nuevo, $perfiles_urls)) {
+  // Evita duplicados normalizando contra la URL viva del post.
+  $already_exists = false;
+  foreach ( $perfiles_urls as $item ) {
+    if ( ! is_array( $item ) || empty( $item['url'] ) ) {
+      continue;
+    }
+
+    $existing_url = sc_get_live_profile_url( $item['url'] );
+    if ( $existing_url && sc_url_matches( $existing_url, $nueva_url ) ) {
+      $already_exists = true;
+      break;
+    }
+  }
+
+  if ( ! $already_exists ) {
     $perfiles_urls[] = $perfil_nuevo;
   }
 
@@ -880,6 +946,43 @@ function sc_canonicalize_url( $url ) {
   return rtrim( home_url(), '/' ) . $path;
 }
 
+function sc_get_profile_post_id_from_url( $url ) {
+  $canonical_url = sc_canonicalize_url( $url );
+  if ( '' === $canonical_url ) {
+    return 0;
+  }
+
+  return (int) url_to_postid( $canonical_url );
+}
+
+function sc_get_profile_permalink( $post_id, $fallback = '' ) {
+  $post_id = (int) $post_id;
+  if ( $post_id <= 0 ) {
+    return $fallback ? esc_url_raw( $fallback ) : '';
+  }
+
+  $permalink = get_permalink( $post_id );
+  if ( $permalink ) {
+    return (string) $permalink;
+  }
+
+  return $fallback ? esc_url_raw( $fallback ) : '';
+}
+
+function sc_get_live_profile_url( $url ) {
+  $stored_url = esc_url_raw( (string) $url );
+  if ( '' === $stored_url ) {
+    return '';
+  }
+
+  $post_id = sc_get_profile_post_id_from_url( $stored_url );
+  if ( $post_id > 0 ) {
+    return sc_get_profile_permalink( $post_id, $stored_url );
+  }
+
+  return $stored_url;
+}
+
 // Igualdad por “path canónico”
 function sc_url_matches( $a, $b ) {
   return sc_canonicalize_url( $a ) === sc_canonicalize_url( $b );
@@ -955,8 +1058,13 @@ if ( ! is_array($perfiles_urls) ) { $perfiles_urls = []; }
 
 $updated = [];
 foreach ( $perfiles_urls as $item ) {
+  $candidate_url = '';
+  if ( isset( $item['url'] ) ) {
+    $candidate_url = sc_get_live_profile_url( $item['url'] );
+  }
+
   // Conserva los que NO coinciden (comparación canónica)
-  if ( ! isset($item['url']) || ! sc_url_matches($item['url'], $perfil_url) ) {
+  if ( '' === $candidate_url || ! sc_url_matches( $candidate_url, $perfil_url ) ) {
     $updated[] = $item;
   }
 }
@@ -1030,7 +1138,12 @@ function borrar_smartcard_perfil() {
   if ( is_array($perfiles_urls) && ! empty($perfiles_urls) ) {
     $updated = [];
     foreach ( $perfiles_urls as $item ) {
-      if ( isset($item['url']) && sc_url_matches($item['url'], $perfil_url) ) {
+      $candidate_url = '';
+      if ( isset( $item['url'] ) ) {
+        $candidate_url = sc_get_live_profile_url( $item['url'] );
+      }
+
+      if ( $candidate_url && sc_url_matches( $candidate_url, $perfil_url ) ) {
         $removed = true;
         continue; // no lo copiamos => eliminado
       }
@@ -2049,7 +2162,7 @@ function sc_get_my_cards(WP_REST_Request $request) {
     foreach ($perfiles as $index => $perfil) {
 
         // Seguridad básica
-        $url   = isset($perfil['url']) ? esc_url_raw($perfil['url']) : '';
+        $url   = isset($perfil['url']) ? sc_get_live_profile_url($perfil['url']) : '';
         $name  = isset($perfil['nombre_completo']) ? sanitize_text_field($perfil['nombre_completo']) : '';
         $photo = isset($perfil['foto_perfil']) ? esc_url_raw($perfil['foto_perfil']) : '';
 
@@ -2062,6 +2175,7 @@ function sc_get_my_cards(WP_REST_Request $request) {
             'name'        => $name,
             'photo'       => $photo ?: '',
             'profile_url' => $url,
+            'perfil_url'  => $url,
             'status'      => 'active',          // En tu flujo actual siempre es activo
         ];
     }
@@ -2137,7 +2251,12 @@ function sc_delete_smartcard_rest(WP_REST_Request $request) {
   if (is_array($perfiles)) {
     $updated = [];
     foreach ($perfiles as $item) {
-      if (!isset($item['url']) || !sc_url_matches($item['url'], $perfil_url)) {
+      $candidate_url = '';
+      if ( isset( $item['url'] ) ) {
+        $candidate_url = sc_get_live_profile_url( $item['url'] );
+      }
+
+      if ( !$candidate_url || !sc_url_matches($candidate_url, $perfil_url)) {
         $updated[] = $item;
       }
     }
@@ -2264,4 +2383,3 @@ function sc_load_profile_template($template){
 
     return $template;
 }
-

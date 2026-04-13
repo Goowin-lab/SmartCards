@@ -527,7 +527,7 @@ function sc_show_mis_smartcards() {
     <div class="smartcards-slider">
       <?php foreach ( $perfiles_urls as $perfil ) : ?>
         <?php
-        $perfil_url    = isset( $perfil['url'] ) ? $perfil['url'] : '';
+        $perfil_url    = isset( $perfil['url'] ) ? sc_get_live_profile_url( $perfil['url'] ) : '';
         $profile_id    = url_to_postid( $perfil_url );
         $analytics_url = '';
         if ( $profile_id > 0 ) {
@@ -623,9 +623,9 @@ function sc_profile_analytics_shortcode() {
         foreach ( $perfiles_urls as $perfil_data ) {
             $candidate_url = '';
             if ( is_array( $perfil_data ) && ! empty( $perfil_data['url'] ) ) {
-                $candidate_url = (string) $perfil_data['url'];
+                $candidate_url = sc_get_live_profile_url( $perfil_data['url'] );
             } elseif ( is_string( $perfil_data ) ) {
-                $candidate_url = $perfil_data;
+                $candidate_url = sc_get_live_profile_url( $perfil_data );
             }
 
             if ( '' === $candidate_url || '' === (string) $profile_url ) {
@@ -914,7 +914,7 @@ if ( is_array( $raw_profiles ) ) {
     foreach ( $raw_profiles as $profile ) {
         if ( ! empty( $profile['url'] ) ) {
             // Saneamos la URL y la almacenamos
-            $activations[] = esc_url( $profile['url'] );
+            $activations[] = esc_url( sc_get_live_profile_url( $profile['url'] ) );
         }
     }
 }

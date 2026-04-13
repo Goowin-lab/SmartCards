@@ -425,6 +425,13 @@ if ($page_id && !is_wp_error($page_id)) {
 
     // Generar URL del perfil recién creado
     $url_perfil = get_permalink($page_id);
+    $resolved_post_id = url_to_postid( $url_perfil );
+
+    error_log('[SC DEBUG][procesar_formulario] page_id: ' . (int) $page_id);
+    error_log('[SC DEBUG][procesar_formulario] post_type: ' . (string) get_post_type( $page_id ));
+    error_log('[SC DEBUG][procesar_formulario] status: ' . (string) get_post_status( $page_id ));
+    error_log('[SC DEBUG][procesar_formulario] permalink: ' . (string) $url_perfil);
+    error_log('[SC DEBUG][procesar_formulario] url_to_postid: ' . (int) $resolved_post_id);
 
     // Llamar función de notificación después de crear exitosamente el perfil
 $user_id = get_current_user_id();
@@ -436,7 +443,11 @@ notificar_aprobacion_perfil($url_perfil, $nombre_cliente, $nombre_empresa);
 
 
     // Enviar respuesta JSON con la URL para el QR dinámico
-    wp_send_json_success(['perfil_url' => $url_perfil]);
+    wp_send_json_success([
+        'perfil_url' => $url_perfil,
+        'public_url' => $url_perfil,
+        'permalink'  => $url_perfil,
+    ]);
 
 } else {
 

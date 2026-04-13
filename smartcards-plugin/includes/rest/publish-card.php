@@ -69,6 +69,7 @@ if (!function_exists('sc_log_smartcard_publish_state')) {
     error_log($prefix . ' status: ' . (string) $post->post_status);
     error_log($prefix . ' slug real: ' . (string) get_post_field('post_name', $post_id));
     error_log($prefix . ' permalink: ' . (string) get_permalink($post_id));
+    error_log($prefix . ' sc_public_url meta: ' . (string) get_post_meta($post_id, 'sc_public_url', true));
     error_log($prefix . ' direct url: ' . (string) add_query_arg([
       'post_type' => 'smartcards',
       'p' => (int) $post_id,
@@ -98,15 +99,15 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
 
   // Si ya está publicada, no recobra ni regenera VCF.
   if ($post->post_status === 'publish') {
-    $permalink = get_permalink($smartcard_id);
-    $public_url = (string) get_post_meta($smartcard_id, 'sc_public_url', true);
+    $stored_public_url = (string) get_post_meta($smartcard_id, 'sc_public_url', true);
+    $permalink = sc_get_profile_permalink($smartcard_id, $stored_public_url);
+    $public_url = $permalink ?: $stored_public_url;
     $vcf_url = (string) get_post_meta($smartcard_id, 'sc_vcf_url', true);
     $cached_html = (string) get_post_meta($smartcard_id, 'sc_cached_html', true);
     $cached_time = (int) get_post_meta($smartcard_id, 'sc_cached_at', true);
     $is_cached = ($cached_html !== '' && (time() - $cached_time < $cache_ttl));
 
-    if (!$public_url) {
-      $public_url = $permalink;
+    if ($public_url) {
       update_post_meta($smartcard_id, 'sc_public_url', $public_url);
     }
 
@@ -133,12 +134,22 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
 
     return [
       'success'    => true,
+      'perfil_url' => $public_url ?: $permalink,
       'public_url' => $public_url ?: $permalink,
       'permalink'  => $permalink,
       'vcf_url'    => $vcf_url,
       'html'       => $cached_html,
       'cached'     => $is_cached,
       'status'     => 'publish',
+      'data'       => [
+        'perfil_url' => $public_url ?: $permalink,
+        'public_url' => $public_url ?: $permalink,
+        'permalink'  => $permalink,
+        'vcf_url'    => $vcf_url,
+        'html'       => $cached_html,
+        'cached'     => $is_cached,
+        'status'     => 'publish',
+      ],
     ];
   }
 
@@ -539,7 +550,7 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
 
   sc_log_smartcard_publish_state($smartcard_id, 'after_publish');
 
-  $permalink = get_permalink($smartcard_id);
+  $permalink = sc_get_profile_permalink($smartcard_id);
 
   update_post_meta($smartcard_id, 'sc_cached_html', $html);
   update_post_meta($smartcard_id, 'sc_cached_at', time());
@@ -553,11 +564,21 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
 
   return [
     'success'    => true,
+    'perfil_url' => $permalink,
     'public_url' => $permalink,
     'permalink'  => $permalink,
     'vcf_url'    => $vcf_url,
     'html'       => $html,
     'cached'     => false,
     'status'     => 'publish',
+    'data'       => [
+      'perfil_url' => $permalink,
+      'public_url' => $permalink,
+      'permalink'  => $permalink,
+      'vcf_url'    => $vcf_url,
+      'html'       => $html,
+      'cached'     => false,
+      'status'     => 'publish',
+    ],
   ];
 }
