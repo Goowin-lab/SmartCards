@@ -579,18 +579,21 @@ if (formulario && boton) {
           scAnnounce("Perfil creado con éxito.");
 
           var perfil_url =
-            response?.data?.perfil_url ||
-            response?.data?.public_url ||
-            response?.data?.permalink ||
+            (response &&
+              response.data &&
+              (response.data.perfil_url ||
+                response.data.public_url ||
+                response.data.permalink)) ||
             null;
 
           if (!perfil_url) {
-            console.error("Perfil URL no encontrada", response);
-            alert("Error generando el perfil");
+            console.error("❌ No se encontró perfil_url válido", response);
+            alert("Error generando el perfil. Intenta nuevamente.");
             return;
           }
 
-          console.log(perfil_url);
+          console.log("🔗 URL recibida:", perfil_url);
+          console.log("📦 Respuesta completa:", response);
 
           // Guardar en sesión (no bloqueante)
           fetch(smartcardsL10n.ajax_url + "?action=guardar_url_perfil", {
