@@ -38,27 +38,6 @@ if (!in_array($theme, $allowed_themes, true)) {
     $theme = 'classic';
 }
 
-if (!function_exists('sc_hex_to_contrast_text')) {
-    function sc_hex_to_contrast_text($hex) {
-        $hex = sanitize_hex_color((string) $hex);
-        if (!$hex) {
-            return '#ffffff';
-        }
-
-        $hex = ltrim($hex, '#');
-        if (strlen($hex) === 3) {
-            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
-        }
-
-        $r = hexdec(substr($hex, 0, 2));
-        $g = hexdec(substr($hex, 2, 2));
-        $b = hexdec(substr($hex, 4, 2));
-        $luminance = (0.299 * $r) + (0.587 * $g) + (0.114 * $b);
-
-        return $luminance > 186 ? '#000000' : '#ffffff';
-    }
-}
-
 $theme_body_class_map = [
     'classic'   => 'theme-esencial',
     'dark'      => 'theme-dark',
@@ -67,13 +46,12 @@ $theme_body_class_map = [
 ];
 $theme_body_class = $theme_body_class_map[$theme] ?? 'theme-esencial';
 $allow_dynamic_socials = ( 'premium' === $theme );
-$user_color = sanitize_hex_color((string) get_post_meta($post_id, 'sc_user_color', true));
-$user_font = sc_clean_font_name((string) get_post_meta($post_id, 'sc_font_family', true));
-$font_family_css = $user_font;
-$font_family_stack = sc_get_font_stack($font_family_css);
-$font_url = sc_get_google_font_url($user_font);
+$profile_styles = sc_get_profile_style_settings($post_id, $theme);
+$user_color = $profile_styles['primary_color'];
+$font_urls = $profile_styles['font_urls'];
 $is_dark_theme = ('dark' === $theme);
-$user_text_color = $user_color ? sc_hex_to_contrast_text($user_color) : '';
+$user_text_color = $profile_styles['primary_text_color'];
+$button_text_color = $profile_styles['button_text_color'];
 
 if ($is_dark_theme) {
     $body_style = '--sc-primary:#ffffff;--sc-text:#000000;--sc-text-dynamic:#ffffff;';
@@ -204,7 +182,20 @@ if (!$vcf_url) {
 <link rel="stylesheet" href="<?php echo esc_url($theme_css_url); ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<?php foreach ($font_urls as $font_url): ?>
 <link rel="stylesheet" href="<?php echo esc_url($font_url); ?>">
+<?php endforeach; ?>
+<style>
+  :root {
+    --sc-color-primary: <?php echo esc_html($profile_styles['primary_color']); ?>;
+    --sc-color-role: <?php echo esc_html($profile_styles['role_color']); ?>;
+    --sc-color-button: <?php echo esc_html($profile_styles['button_color']); ?>;
+    --sc-color-button-text: <?php echo esc_html($button_text_color); ?>;
+    --sc-color-redes: <?php echo esc_html($profile_styles['social_color']); ?>;
+    --sc-font-name: "<?php echo esc_attr($profile_styles['name_font']); ?>", "Montserrat", sans-serif;
+    --sc-font-role: "<?php echo esc_attr($profile_styles['role_font']); ?>", "Montserrat", sans-serif;
+  }
+</style>
 <?php if ($is_dark_theme): ?>
 <style>
   :root {
@@ -277,7 +268,9 @@ if (!$vcf_url) {
 <?php endif; ?>
 <style>
   html[data-font-loaded="true"] {
-    --sc-font-family: "<?php echo esc_attr($user_font); ?>", "Montserrat", sans-serif;
+    --sc-font-family: "<?php echo esc_attr($profile_styles['base_font']); ?>", "Montserrat", sans-serif;
+    --sc-font-name: "<?php echo esc_attr($profile_styles['name_font']); ?>", "Montserrat", sans-serif;
+    --sc-font-role: "<?php echo esc_attr($profile_styles['role_font']); ?>", "Montserrat", sans-serif;
   }
 </style>
 <?php wp_head(); ?>
@@ -304,7 +297,7 @@ if (!$vcf_url) {
 <?php endif; ?>
 
 <?php if ($vcf_url): ?>
-<a href="<?php echo esc_url($vcf_url); ?>" target="_blank" rel="noopener" download class="btn-contacto-link sc-btn-contact">
+<a href="<?php echo esc_url($vcf_url); ?>" target="_blank" rel="noopener" download class="btn-contacto-link sc-btn-contact btn-guardar-contacto">
 Guardar contacto ↓
 </a>
 <?php endif; ?>

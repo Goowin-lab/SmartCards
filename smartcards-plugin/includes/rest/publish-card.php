@@ -333,20 +333,69 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
 
   $style = $request->get_param('style');
   if (is_array($style)) {
-    $user_color = isset($style['primaryColor']) ? sanitize_hex_color((string) $style['primaryColor']) : '';
-    $user_font_family = isset($style['fontName']) ? sc_clean_font_name((string) $style['fontName']) : '';
+    $primary_color = sanitize_hex_color(sc_style_pick_value($style, ['primaryColor', 'nameColor', 'colorPrimary']));
+    $role_color = sanitize_hex_color(sc_style_pick_value($style, ['roleColor', 'titleColor', 'colorRole']));
+    $button_color = sanitize_hex_color(sc_style_pick_value($style, ['buttonColor', 'contactButtonColor', 'colorButton']));
+    $social_color = sanitize_hex_color(sc_style_pick_value($style, ['socialColor', 'socialsColor', 'redesColor', 'colorRedes']));
+    $name_font_raw = sc_style_pick_value($style, ['fontName', 'nameFont']);
+    $role_font_raw = sc_style_pick_value($style, ['fontRole', 'roleFont', 'jobFont']);
+    $user_font_family = $name_font_raw !== '' ? sc_clean_font_name($name_font_raw) : '';
+    $role_font_family = $role_font_raw !== '' ? sc_clean_font_name($role_font_raw) : '';
+
     if ($theme === 'dark') {
       delete_post_meta($smartcard_id, 'sc_user_color');
-    } elseif ($user_color) {
-      update_post_meta($smartcard_id, 'sc_user_color', $user_color);
+    } elseif ($primary_color) {
+      update_post_meta($smartcard_id, 'sc_user_color', $primary_color);
     } else {
       delete_post_meta($smartcard_id, 'sc_user_color');
     }
 
     if ($user_font_family) {
       update_post_meta($smartcard_id, 'sc_font_family', $user_font_family);
+      update_post_meta($smartcard_id, 'sc_font_name', $user_font_family);
     } else {
       delete_post_meta($smartcard_id, 'sc_font_family');
+      if (sc_style_has_any_key($style, ['fontName', 'nameFont'])) {
+        delete_post_meta($smartcard_id, 'sc_font_name');
+      }
+    }
+
+    if ($primary_color) {
+      update_post_meta($smartcard_id, 'sc_color_primary', $primary_color);
+    } else {
+      delete_post_meta($smartcard_id, 'sc_color_primary');
+    }
+
+    if (sc_style_has_any_key($style, ['roleColor', 'titleColor', 'colorRole'])) {
+      if ($role_color) {
+        update_post_meta($smartcard_id, 'sc_color_role', $role_color);
+      } else {
+        delete_post_meta($smartcard_id, 'sc_color_role');
+      }
+    }
+
+    if (sc_style_has_any_key($style, ['buttonColor', 'contactButtonColor', 'colorButton'])) {
+      if ($button_color) {
+        update_post_meta($smartcard_id, 'sc_color_button', $button_color);
+      } else {
+        delete_post_meta($smartcard_id, 'sc_color_button');
+      }
+    }
+
+    if (sc_style_has_any_key($style, ['socialColor', 'socialsColor', 'redesColor', 'colorRedes'])) {
+      if ($social_color) {
+        update_post_meta($smartcard_id, 'sc_color_redes', $social_color);
+      } else {
+        delete_post_meta($smartcard_id, 'sc_color_redes');
+      }
+    }
+
+    if (sc_style_has_any_key($style, ['fontRole', 'roleFont', 'jobFont'])) {
+      if ($role_font_family) {
+        update_post_meta($smartcard_id, 'sc_font_role', $role_font_family);
+      } else {
+        delete_post_meta($smartcard_id, 'sc_font_role');
+      }
     }
   }
 
@@ -506,7 +555,7 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
     $html .= '  <h4>' . esc_html($jobTitle) . '</h4>';
   }
 
-  $html .= '  <a href="' . esc_url($vcf_url) . '" target="_blank" rel="noopener" download class="btn-contacto-link sc-btn-contact">';
+  $html .= '  <a href="' . esc_url($vcf_url) . '" target="_blank" rel="noopener" download class="btn-contacto-link sc-btn-contact btn-guardar-contacto">';
   $html .= '    Guardar contacto ↓';
   $html .= '  </a>';
 

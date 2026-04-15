@@ -329,7 +329,7 @@ update_user_meta( $user_id, 'smartcards_foto_portada_id', $foto_portada_attach_i
   <h4>'.$datos_personales['cargo'].'</h4>
 
   <a href="'. esc_url( home_url('/descargar-vcf/' . $user_id) . '?ts=' . time() ) .'"
-     class="btn-contacto-link sc-btn-contact"
+     class="btn-contacto-link sc-btn-contact btn-guardar-contacto"
      data-sc-event="save_contact_click"
      download>
     Guardar contacto ↓

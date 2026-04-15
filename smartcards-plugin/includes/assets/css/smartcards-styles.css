@@ -1542,14 +1542,34 @@ a.sc-google-btn:active {
 }
 
 .theme-premium {
-  --sc-primary: var(--user-color);
-  --sc-text: #ffffff;
-  --sc-text-dynamic: var(--user-color);
+  --sc-primary: var(--sc-color-primary, var(--user-color));
+  --sc-text: var(--sc-color-button-text, #ffffff);
+  --sc-text-dynamic: var(--sc-color-primary, var(--user-color));
 }
 
-.theme-premium .btn-red-social svg.icon-social {
-  width: 34px;
-  height: 34px;
+.theme-premium .perfil-publico h2 {
+  color: var(--sc-color-primary);
+  font-family: var(--sc-font-name);
+}
+
+.theme-premium .perfil-publico h4 {
+  color: var(--sc-color-role);
+  font-family: var(--sc-font-role);
+}
+
+.theme-premium .btn-guardar-contacto {
+  background-color: var(--sc-color-button) !important;
+  color: var(--sc-color-button-text) !important;
+}
+
+.theme-premium .btn-red-social {
+  line-height: 0;
+}
+
+.theme-premium .icon-social {
+  width: 45px;
+  height: 45px;
   display: block;
-  fill: var(--sc-primary);
+  color: var(--sc-color-redes);
+  fill: currentColor;
 }

@@ -167,6 +167,27 @@ if ( ! function_exists( 'sc_get_font_stack' ) ) {
     }
 }
 
+if ( ! function_exists( 'sc_hex_to_contrast_text' ) ) {
+    function sc_hex_to_contrast_text( $hex ) {
+        $hex = sanitize_hex_color( (string) $hex );
+        if ( ! $hex ) {
+            return '#ffffff';
+        }
+
+        $hex = ltrim( $hex, '#' );
+        if ( strlen( $hex ) === 3 ) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+
+        $r = hexdec( substr( $hex, 0, 2 ) );
+        $g = hexdec( substr( $hex, 2, 2 ) );
+        $b = hexdec( substr( $hex, 4, 2 ) );
+        $luminance = ( 0.299 * $r ) + ( 0.587 * $g ) + ( 0.114 * $b );
+
+        return $luminance > 186 ? '#000000' : '#ffffff';
+    }
+}
+
 if ( ! function_exists( 'sc_get_google_font_weights' ) ) {
     function sc_get_google_font_weights( $font ) {
         $font = sc_clean_font_name( $font );
@@ -220,6 +241,113 @@ if ( ! function_exists( 'sc_get_google_font_url' ) ) {
     }
 }
 
+if ( ! function_exists( 'sc_style_pick_value' ) ) {
+    function sc_style_pick_value( $style, $keys ) {
+        if ( ! is_array( $style ) ) {
+            return '';
+        }
+
+        foreach ( (array) $keys as $key ) {
+            if ( ! array_key_exists( $key, $style ) ) {
+                continue;
+            }
+
+            $value = trim( (string) $style[ $key ] );
+            if ( $value !== '' ) {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+}
+
+if ( ! function_exists( 'sc_style_has_any_key' ) ) {
+    function sc_style_has_any_key( $style, $keys ) {
+        if ( ! is_array( $style ) ) {
+            return false;
+        }
+
+        foreach ( (array) $keys as $key ) {
+            if ( array_key_exists( $key, $style ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if ( ! function_exists( 'sc_get_profile_style_settings' ) ) {
+    function sc_get_profile_style_settings( $post_id, $theme = '' ) {
+        $post_id = (int) $post_id;
+        $theme   = sanitize_key( (string) $theme );
+
+        $legacy_color_raw = (string) get_post_meta( $post_id, 'sc_user_color', true );
+        $primary_color_raw = (string) get_post_meta( $post_id, 'sc_color_primary', true );
+        $role_color_raw    = (string) get_post_meta( $post_id, 'sc_color_role', true );
+        $button_color_raw  = (string) get_post_meta( $post_id, 'sc_color_button', true );
+        $social_color_raw  = (string) get_post_meta( $post_id, 'sc_color_redes', true );
+
+        $primary_color = sanitize_hex_color( $primary_color_raw ? $primary_color_raw : $legacy_color_raw );
+        if ( ! $primary_color ) {
+            $primary_color = '#01a350';
+        }
+
+        $role_color = sanitize_hex_color( $role_color_raw );
+        if ( ! $role_color ) {
+            $role_color = $primary_color;
+        }
+
+        $button_color = sanitize_hex_color( $button_color_raw );
+        if ( ! $button_color ) {
+            $button_color = $primary_color;
+        }
+
+        $social_color = sanitize_hex_color( $social_color_raw );
+        if ( ! $social_color ) {
+            $social_color = $primary_color;
+        }
+
+        $legacy_font_raw = (string) get_post_meta( $post_id, 'sc_font_family', true );
+        $name_font_raw   = (string) get_post_meta( $post_id, 'sc_font_name', true );
+        $role_font_raw   = (string) get_post_meta( $post_id, 'sc_font_role', true );
+
+        $base_font_source = $name_font_raw !== '' ? $name_font_raw : $legacy_font_raw;
+        if ( $base_font_source === '' ) {
+            $base_font_source = 'Montserrat';
+        }
+
+        $base_font = sc_clean_font_name( $base_font_source );
+        $name_font = sc_clean_font_name( $name_font_raw !== '' ? $name_font_raw : $base_font_source );
+
+        $role_font_source = $role_font_raw !== '' ? $role_font_raw : ( $legacy_font_raw !== '' ? $legacy_font_raw : $name_font );
+        $role_font = sc_clean_font_name( $role_font_source );
+
+        $font_urls = [];
+        foreach ( array_unique( array_filter( [ $base_font, $name_font, $role_font ] ) ) as $font_name ) {
+            $font_urls[] = sc_get_google_font_url( $font_name );
+        }
+
+        return [
+            'theme'               => $theme,
+            'primary_color'       => $primary_color,
+            'role_color'          => $role_color,
+            'button_color'        => $button_color,
+            'social_color'        => $social_color,
+            'primary_text_color'  => sc_hex_to_contrast_text( $primary_color ),
+            'button_text_color'   => sc_hex_to_contrast_text( $button_color ),
+            'base_font'           => $base_font,
+            'name_font'           => $name_font,
+            'role_font'           => $role_font,
+            'base_font_css'       => sc_get_font_stack( $base_font ),
+            'name_font_css'       => sc_get_font_stack( $name_font ),
+            'role_font_css'       => sc_get_font_stack( $role_font ),
+            'font_urls'           => $font_urls,
+        ];
+    }
+}
+
 if ( ! function_exists( 'sc_get_social_icon_markup' ) ) {
     function sc_get_social_icon_markup( $icon_filename, $label = '', $allow_inline_svg = false ) {
         $candidates = [
@@ -241,7 +369,72 @@ if ( ! function_exists( 'sc_get_social_icon_markup' ) ) {
             if ( $allow_inline_svg && strtolower( pathinfo( $candidate['path'], PATHINFO_EXTENSION ) ) === 'svg' ) {
                 $svg = file_get_contents( $candidate['path'] );
                 if ( false !== $svg && '' !== trim( $svg ) ) {
-                    $svg = preg_replace( '/<svg\b/', '<svg class="icon-social"', $svg, 1 );
+                    $svg = preg_replace( '/<\?xml.*?\?>/si', '', $svg );
+                    $svg = preg_replace( '/<!--.*?-->/s', '', $svg );
+                    $svg = preg_replace_callback(
+                        '/\s(fill|stroke)=(["\'])(.*?)\2/i',
+                        static function ( $matches ) {
+                            if ( strtolower( trim( $matches[3] ) ) === 'none' ) {
+                                return $matches[0];
+                            }
+
+                            return ' ' . strtolower( $matches[1] ) . '="currentColor"';
+                        },
+                        $svg
+                    );
+                    $svg = preg_replace_callback(
+                        '/\sstyle=(["\'])(.*?)\1/i',
+                        static function ( $matches ) {
+                            $style = preg_replace_callback(
+                                '/(?:^|;)\s*(fill|stroke)\s*:\s*([^;]+)\s*(?=;|$)/i',
+                                static function ( $style_matches ) {
+                                    if ( strtolower( trim( $style_matches[2] ) ) === 'none' ) {
+                                        return $style_matches[0];
+                                    }
+
+                                    return '; ' . strtolower( $style_matches[1] ) . ': currentColor';
+                                },
+                                $matches[2]
+                            );
+                            $style = trim( preg_replace( '/\s+/', ' ', $style ) );
+
+                            return ' style=' . $matches[1] . $style . $matches[1];
+                        },
+                        $svg
+                    );
+                    $svg = preg_replace_callback(
+                        '/<svg\b([^>]*)>/i',
+                        static function ( $matches ) use ( $label ) {
+                            $attrs = $matches[1];
+
+                            if ( preg_match( '/\bclass=(["\'])(.*?)\1/i', $attrs, $class_match ) ) {
+                                $classes = trim( $class_match[2] . ' icon-social' );
+                                $attrs = preg_replace(
+                                    '/\bclass=(["\']).*?\1/i',
+                                    ' class="' . esc_attr( $classes ) . '"',
+                                    $attrs,
+                                    1
+                                );
+                            } else {
+                                $attrs .= ' class="icon-social"';
+                            }
+
+                            if ( $label !== '' && ! preg_match( '/\baria-label=/i', $attrs ) ) {
+                                $attrs .= ' role="img" aria-label="' . esc_attr( $label ) . '"';
+                            } elseif ( ! preg_match( '/\baria-hidden=/i', $attrs ) ) {
+                                $attrs .= ' aria-hidden="true"';
+                            }
+
+                            if ( ! preg_match( '/\bfocusable=/i', $attrs ) ) {
+                                $attrs .= ' focusable="false"';
+                            }
+
+                            return '<svg' . $attrs . '>';
+                        },
+                        $svg,
+                        1
+                    );
+
                     return $svg;
                 }
             }

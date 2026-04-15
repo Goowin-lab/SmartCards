@@ -42,6 +42,8 @@ function sc_get_smartcard(WP_REST_Request $request) {
   }
 
   // 4️⃣ Construir respuesta (vacíos por defecto)
+  $profile_styles = sc_get_profile_style_settings($card_id, (string) get_post_meta($card_id, 'sc_theme', true));
+
   $data = [
     'firstName' => get_post_meta($card_id, 'firstName', true) ?: '',
     'lastName'  => get_post_meta($card_id, 'lastName', true) ?: '',
@@ -72,7 +74,12 @@ function sc_get_smartcard(WP_REST_Request $request) {
     'pay_mercadopago'  => get_post_meta($card_id, 'pay_mercadopago', true) ?: '',
     'pay_wise'         => get_post_meta($card_id, 'pay_wise', true) ?: '',
     'style'            => [
-      'fontName' => sc_clean_font_name((string) get_post_meta($card_id, 'sc_font_family', true)),
+      'primaryColor' => $profile_styles['primary_color'],
+      'roleColor'    => $profile_styles['role_color'],
+      'buttonColor'  => $profile_styles['button_color'],
+      'socialColor'  => $profile_styles['social_color'],
+      'fontName'     => $profile_styles['name_font'],
+      'fontRole'     => $profile_styles['role_font'],
     ],
   ];
 
