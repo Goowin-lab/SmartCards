@@ -16,6 +16,22 @@ function t(key, def) {
 var __scNonCriticalTasksStarted = false;
 window.__scBuyWithIAP = null;
 
+function blockFormImmediately() {
+  if (
+    typeof window.smartcardsUser !== "undefined" &&
+    Number(window.smartcardsUser.credits) <= 0
+  ) {
+    const form = document.getElementById("smartcards-form");
+
+    if (form) {
+      form.style.opacity = "0.3";
+      form.style.pointerEvents = "none";
+    }
+  }
+}
+
+blockFormImmediately();
+
 function initShare() {
   document.querySelectorAll(".share-btn").forEach((button) => {
     button.addEventListener("click", function () {
@@ -1228,12 +1244,13 @@ function initSmartCardAnalyticsChart() {
 
 function initNoCreditsGate() {
   if (typeof window.smartcardsUser === "undefined") return;
+  if (Number(window.smartcardsUser.credits) > 0) return;
 
   var form = document.getElementById("smartcards-form");
   if (!form) return;
 
-  var credits = parseInt(window.smartcardsUser.credits, 10);
-  if (isNaN(credits) || credits > 0) return;
+  form.style.opacity = "";
+  form.style.pointerEvents = "";
 
   form.innerHTML =
     '<div class="sc-no-credits">' +
@@ -1241,7 +1258,7 @@ function initNoCreditsGate() {
     "<p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>" +
     "<p>✨ Activa un crédito y publica tu perfil en segundos.</p>" +
     '<div class="sc-no-credits-actions">' +
-    '<a href="/comprar-creditos/" class="form-button">Comprar créditos</a>' +
+    '<a href="/comprar-creditos/" class="form-button">Activar crédito ahora</a>' +
     '<a href="/dashboard/" class="sc-secondary-btn">Volver al dashboard</a>' +
     "</div>" +
     "</div>";
