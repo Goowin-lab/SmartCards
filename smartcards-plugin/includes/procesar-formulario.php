@@ -15,12 +15,12 @@ function procesar_formulario() {
     $user_id = get_current_user_id();
 
     // Verificar créditos disponibles
-$credits = (int) get_user_meta( $user_id, 'smartcards_credits', true );
-if ( $credits <= 0 ) {
-    wp_die(
-        esc_html__( 'No tienes créditos disponibles para activar Smart Cards.', 'smartcards' )
-    );
-}
+    $credits = (int) get_user_meta( $user_id, 'smartcards_credits', true );
+    if ( $credits <= 0 ) {
+        wp_send_json_error( [
+            'message' => '🚫 No tienes créditos disponibles. Compra un crédito para crear tu perfil.',
+        ] );
+    }
 
     // Restar un crédito
     update_user_meta($user_id, 'smartcards_credits', $credits - 1);

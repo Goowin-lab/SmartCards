@@ -1226,7 +1226,29 @@ function initSmartCardAnalyticsChart() {
   });
 }
 
+function initNoCreditsGate() {
+  if (typeof window.smartcardsUser === "undefined") return;
+
+  var form = document.getElementById("smartcards-form");
+  if (!form) return;
+
+  var credits = parseInt(window.smartcardsUser.credits, 10);
+  if (isNaN(credits) || credits > 0) return;
+
+  form.innerHTML =
+    '<div class="sc-no-credits">' +
+    "<h2>🚫 No tienes créditos disponibles</h2>" +
+    "<p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>" +
+    "<p>✨ Activa un crédito y publica tu perfil en segundos.</p>" +
+    '<div class="sc-no-credits-actions">' +
+    '<a href="/comprar-creditos/" class="form-button">Comprar créditos</a>' +
+    '<a href="/dashboard/" class="sc-secondary-btn">Volver al dashboard</a>' +
+    "</div>" +
+    "</div>";
+}
+
 function initSmartCardsFrontend() {
+  initNoCreditsGate();
   initSmartCardTracking();
   initFormValidation();
   initQRCodeOnPublicProfile();
