@@ -49,6 +49,20 @@ function smartcards_form_shortcode() {
 
     // Obtener el ID del usuario actual
     $perfil_id = get_current_user_id();
+    $credits   = (int) get_user_meta( $perfil_id, 'smartcards_credits', true );
+
+    if ( $credits <= 0 ) {
+        return
+            '<div class="sc-no-credits">'
+            . '<h2>🚫 No tienes créditos disponibles</h2>'
+            . '<p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>'
+            . '<p>✨ Activa un crédito y publica tu perfil en segundos.</p>'
+            . '<div class="sc-no-credits-actions">'
+            . '<a href="' . esc_url( home_url( '/comprar-creditos/' ) ) . '" class="form-button">Activar crédito ahora</a>'
+            . '<a href="' . esc_url( home_url( '/dashboard/' ) ) . '" class="sc-secondary-btn">Volver al dashboard</a>'
+            . '</div>'
+            . '</div>';
+    }
 
     // 2. Construir el formulario (ya que el usuario está logueado)
     ob_start(); 
