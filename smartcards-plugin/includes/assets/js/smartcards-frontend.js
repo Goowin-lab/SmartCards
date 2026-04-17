@@ -16,21 +16,32 @@ function t(key, def) {
 var __scNonCriticalTasksStarted = false;
 window.__scBuyWithIAP = null;
 
-function blockFormImmediately() {
-  if (
-    typeof window.smartcardsUser !== "undefined" &&
-    Number(window.smartcardsUser.credits) <= 0
-  ) {
-    const form = document.getElementById("smartcards-form");
+function waitForSmartcardsUserAndBlock() {
+  let attempts = 0;
 
-    if (form) {
-      form.style.opacity = "0.3";
-      form.style.pointerEvents = "none";
+  const interval = setInterval(function () {
+    attempts++;
+
+    if (typeof window.smartcardsUser !== "undefined") {
+      if (Number(window.smartcardsUser.credits) <= 0) {
+        const form = document.getElementById("smartcards-form");
+
+        if (form) {
+          form.style.opacity = "0.3";
+          form.style.pointerEvents = "none";
+        }
+      }
+
+      clearInterval(interval);
     }
-  }
+
+    if (attempts > 50) {
+      clearInterval(interval);
+    }
+  }, 50);
 }
 
-blockFormImmediately();
+waitForSmartcardsUserAndBlock();
 
 function initShare() {
   document.querySelectorAll(".share-btn").forEach((button) => {
