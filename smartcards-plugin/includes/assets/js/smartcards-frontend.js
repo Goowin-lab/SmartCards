@@ -43,6 +43,19 @@ function waitForSmartcardsUserAndBlock() {
 
 waitForSmartcardsUserAndBlock();
 
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest(".sc-buy-card");
+  if (!btn) return;
+
+  e.preventDefault();
+
+  const url = btn.getAttribute("href");
+
+  fetch(url, { credentials: "same-origin" }).then(() => {
+    window.location.href = "/carrito/";
+  });
+});
+
 function initShare() {
   document.querySelectorAll(".share-btn").forEach((button) => {
     button.addEventListener("click", function () {
@@ -1269,9 +1282,9 @@ function initNoCreditsGate() {
     "<p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>" +
     "<p>✨ Activa un crédito y publica tu perfil en segundos.</p>" +
     '<div class="sc-no-credits-actions">' +
-    '<a href="https://app.smartcards.com.co/producto/credito-smartcards/?v=ab6c04006660" class="sc-buy-btn" data-track="buy-credits">🪙 Comprar 1 crédito</a>' +
-    '<a href="https://app.smartcards.com.co/producto/5-creditos-smartcards/?v=ab6c04006660" class="sc-buy-btn" data-track="buy-credits">🪙 Comprar 5 créditos</a>' +
-    '<a href="https://app.smartcards.com.co/producto/10-creditos-smartcards/?v=ab6c04006660" class="sc-buy-btn" data-track="buy-credits">🪙 Comprar 10 créditos</a>' +
+    '<a href="/?add-to-cart=1935" class="sc-buy-card" data-track="buy-credit">🪙 Comprar 1 crédito<span class="sc-price">$24.900</span></a>' +
+    '<a href="/?add-to-cart=4946" class="sc-buy-card sc-recommended" data-track="buy-credit"><span class="sc-badge">🔥 Recomendado</span>🪙 Comprar 5 créditos<span class="sc-price">$99.900</span></a>' +
+    '<a href="/?add-to-cart=4947" class="sc-buy-card" data-track="buy-credit">🪙 Comprar 10 créditos<span class="sc-price">$169.900</span></a>' +
     '<a href="/dashboard/" class="sc-secondary-btn">Volver al dashboard</a>' +
     "</div>" +
     "</div>";
