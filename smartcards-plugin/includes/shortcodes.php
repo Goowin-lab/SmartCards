@@ -58,7 +58,9 @@ function smartcards_form_shortcode() {
             . '<p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>'
             . '<p>✨ Activa un crédito y publica tu perfil en segundos.</p>'
             . '<div class="sc-no-credits-actions">'
-            . '<a href="' . esc_url( home_url( '/comprar-creditos/' ) ) . '" class="form-button">Activar crédito ahora</a>'
+            . '<a href="' . esc_url( 'https://app.smartcards.com.co/producto/credito-smartcards/?v=ab6c04006660' ) . '" class="sc-buy-btn" data-track="buy-credits">🪙 Comprar 1 crédito</a>'
+            . '<a href="' . esc_url( 'https://app.smartcards.com.co/producto/5-creditos-smartcards/?v=ab6c04006660' ) . '" class="sc-buy-btn" data-track="buy-credits">🪙 Comprar 5 créditos</a>'
+            . '<a href="' . esc_url( 'https://app.smartcards.com.co/producto/10-creditos-smartcards/?v=ab6c04006660' ) . '" class="sc-buy-btn" data-track="buy-credits">🪙 Comprar 10 créditos</a>'
             . '<a href="' . esc_url( home_url( '/dashboard/' ) ) . '" class="sc-secondary-btn">Volver al dashboard</a>'
             . '</div>'
             . '</div>';
