@@ -53,16 +53,16 @@ function smartcards_form_shortcode() {
 
     if ( $credits <= 0 ) {
         return
-            '<div class="sc-no-credits">'
+            '<div class="sc-no-credits-box">'
             . '<h2>🚫 No tienes créditos disponibles</h2>'
             . '<p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>'
-            . '<p>✨ Activa un crédito y publica tu perfil en segundos.</p>'
-            . '<div class="sc-no-credits-actions">'
-            . '<a href="' . esc_url( home_url( '/?add-to-cart=1935' ) ) . '" class="sc-buy-card" data-track="buy-credit">🪙 Comprar 1 crédito<span class="sc-price">$24.900</span></a>'
-            . '<a href="' . esc_url( home_url( '/?add-to-cart=4946' ) ) . '" class="sc-buy-card sc-recommended" data-track="buy-credit"><span class="sc-badge">🔥 Recomendado</span>🪙 Comprar 5 créditos<span class="sc-price">$99.900</span></a>'
-            . '<a href="' . esc_url( home_url( '/?add-to-cart=4947' ) ) . '" class="sc-buy-card" data-track="buy-credit">🪙 Comprar 10 créditos<span class="sc-price">$169.900</span></a>'
-            . '<a href="' . esc_url( home_url( '/dashboard/' ) ) . '" class="sc-secondary-btn">Volver al dashboard</a>'
+            . '<p class="sc-highlight">✨ Activa un crédito y publica tu perfil en segundos.</p>'
+            . '<div class="sc-buy-options">'
+            . '<a href="' . esc_url( home_url( '/?add-to-cart=1935' ) ) . '" class="sc-buy-btn">🪙 Comprar 1 crédito<span>$24.900</span></a>'
+            . '<a href="' . esc_url( home_url( '/?add-to-cart=4946' ) ) . '" class="sc-buy-btn sc-recommended">🔥 Comprar 5 créditos<span>$99.900</span></a>'
+            . '<a href="' . esc_url( home_url( '/?add-to-cart=4947' ) ) . '" class="sc-buy-btn">🪙 Comprar 10 créditos<span>$169.900</span></a>'
             . '</div>'
+            . '<a href="' . esc_url( home_url( '/dashboard/' ) ) . '" class="sc-secondary-btn">Volver al dashboard</a>'
             . '</div>';
     }
 
