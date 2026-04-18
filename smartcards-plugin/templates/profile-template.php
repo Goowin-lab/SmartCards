@@ -311,7 +311,13 @@ rel="noopener"
 class="btn-red-social <?php echo esc_attr($link['key']); ?>"
 data-sc-event="button_click"
 data-sc-button="<?php echo esc_attr($link['key']); ?>">
+<?php if ('premium' === $theme && 'whatsapp' === $link['key']): ?>
+<svg viewBox="0 0 24 24" style="width:40px;height:40px;color:red;">
+  <circle cx="12" cy="12" r="10" fill="currentColor"/>
+</svg>
+<?php else: ?>
 <?php echo sc_get_social_icon_markup($link['icon'], $link['key'], $allow_dynamic_socials); ?>
+<?php endif; ?>
 </a>
 <?php endforeach; ?>
 </div>
