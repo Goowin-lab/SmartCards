@@ -141,14 +141,6 @@
   background: #0056b3;
 }
 
-#smartcards-form.sc-no-credits-host {
-  background: transparent;
-  padding: 0;
-  max-width: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
 .form-button.loading {
   pointer-events: none;
   opacity: 0.7;
