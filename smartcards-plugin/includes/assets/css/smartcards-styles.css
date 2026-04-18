@@ -1558,20 +1558,43 @@ a.sc-google-btn:active {
 }
 
 .theme-premium .btn-guardar-contacto {
-  background-color: var(--sc-color-button) !important;
-  color: var(--sc-color-button-text) !important;
+  background: var(--sc-color-button) !important;
+  color: #fff !important;
+}
+
+.theme-premium .btn-red-social img {
+  display: none !important;
 }
 
 .theme-premium .btn-red-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--sc-color-redes) !important;
   line-height: 0;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--sc-color-redes) 20%, transparent) !important;
+  transition: all 0.2s ease;
+}
+
+.theme-premium .btn-red-social:hover {
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--sc-color-redes) 33%, transparent) !important;
+  transform: scale(1.05);
 }
 
 .theme-premium .icon-social {
   width: 45px;
   height: 45px;
   display: block;
-  color: var(--sc-color-redes);
-  fill: currentColor;
+  color: inherit !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+.theme-premium #smartcards-form button,
+.theme-premium #smartcards-form button:hover {
+  background: unset !important;
 }
 
 /* ===== BOTONES COMPRA CRÉDITOS ===== */
