@@ -1566,21 +1566,31 @@ a.sc-google-btn:active {
   display: none !important;
 }
 
+.theme-premium .redes-sociales a.btn-red-social {
+  color: var(--sc-color-redes, var(--user-color)) !important;
+}
+
+.theme-premium .btn-red-social,
+.theme-premium .btn-red-social * {
+  color: var(--sc-color-redes, var(--user-color)) !important;
+}
+
 .theme-premium .btn-red-social {
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 16px;
   background: rgba(255,255,255,0.08) !important;
-  color: var(--sc-color-redes) !important;
   line-height: 0;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--sc-color-redes) 20%, transparent) !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15) !important;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--sc-color-redes, var(--user-color)) 30%, transparent) !important;
   transition: all 0.2s ease;
 }
 
 .theme-premium .btn-red-social:hover {
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--sc-color-redes) 33%, transparent) !important;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--sc-color-redes, var(--user-color)) 55%, transparent) !important;
   transform: scale(1.05);
+  transition: all 0.2s ease;
 }
 
 .theme-premium .icon-social {
