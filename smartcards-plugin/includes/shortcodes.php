@@ -58,9 +58,9 @@ function smartcards_form_shortcode() {
             . '<p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>'
             . '<p class="sc-highlight">✨ Activa un crédito y publica tu perfil en segundos.</p>'
             . '<div class="sc-buy-options">'
-            . '<a href="' . esc_url( home_url( '/?add-to-cart=1935' ) ) . '" class="sc-buy-btn">🪙 Comprar 1 crédito<span class="sc-price">$24.900</span></a>'
-            . '<a href="' . esc_url( home_url( '/?add-to-cart=4946' ) ) . '" class="sc-buy-btn sc-buy-featured">🔥 Comprar 5 créditos<span class="sc-price">$99.900</span></a>'
-            . '<a href="' . esc_url( home_url( '/?add-to-cart=4947' ) ) . '" class="sc-buy-btn">🪙 Comprar 10 créditos<span class="sc-price">$169.900</span></a>'
+            . '<a href="' . esc_url( home_url( '/?add-to-cart=1935' ) ) . '" class="sc-google-btn sc-google-btn--green">🪙 Comprar 1 crédito<span class="sc-price">$24.900</span></a>'
+            . '<a href="' . esc_url( home_url( '/?add-to-cart=4946' ) ) . '" class="sc-google-btn sc-google-btn--primary">🔥 Comprar 5 créditos<span class="sc-price">$99.900</span></a>'
+            . '<a href="' . esc_url( home_url( '/?add-to-cart=4947' ) ) . '" class="sc-google-btn sc-google-btn--green">🪙 Comprar 10 créditos<span class="sc-price">$169.900</span></a>'
             . '</div>'
             . '<a href="' . esc_url( home_url( '/dashboard/' ) ) . '" class="sc-secondary-btn">Volver al dashboard</a>'
             . '</div>';

@@ -44,7 +44,7 @@ function waitForSmartcardsUserAndBlock() {
 waitForSmartcardsUserAndBlock();
 
 document.addEventListener("click", function (e) {
-  const btn = e.target.closest(".sc-buy-btn");
+  const btn = e.target.closest('.sc-google-btn[href*="add-to-cart"]');
   if (!btn) return;
 
   e.preventDefault();
@@ -1288,17 +1288,17 @@ function initNoCreditsGate() {
 
   <div class="sc-buy-options">
 
-    <a href="/?add-to-cart=1935" class="sc-buy-btn">
+    <a href="/?add-to-cart=1935" class="sc-google-btn sc-google-btn--green">
       🪙 Comprar 1 crédito
       <span class="sc-price">$24.900</span>
     </a>
 
-    <a href="/?add-to-cart=4946" class="sc-buy-btn sc-buy-featured">
+    <a href="/?add-to-cart=4946" class="sc-google-btn sc-google-btn--primary">
       🔥 Comprar 5 créditos
       <span class="sc-price">$99.900</span>
     </a>
 
-    <a href="/?add-to-cart=4947" class="sc-buy-btn">
+    <a href="/?add-to-cart=4947" class="sc-google-btn sc-google-btn--green">
       🪙 Comprar 10 créditos
       <span class="sc-price">$169.900</span>
     </a>
