@@ -137,15 +137,24 @@ body.smartcards-profile {
 .theme-premium .btn-guardar-contacto {
   all: unset;
   box-sizing: border-box;
-  display: inline-block;
+  display: block;
   width: 100%;
   text-align: center;
-  padding: 14px;
+  padding: 16px;
   border-radius: 999px;
   background: var(--sc-color-button, var(--user-color));
   color: #fff;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.theme-premium .btn-guardar-contacto:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.theme-premium .btn-contacto-link img {
+  display: none;
 }
 
 .redes-sociales {
@@ -204,7 +213,7 @@ body.smartcards-profile {
 
 .theme-premium #smartcards-form button,
 .theme-premium #smartcards-form button:hover {
-  background: unset;
+  all: unset;
 }
 
 #qr-container {
