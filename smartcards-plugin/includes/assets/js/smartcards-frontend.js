@@ -1276,43 +1276,43 @@ function initNoCreditsGate() {
   const wrapper = document.createElement("div");
 
   wrapper.innerHTML = `
-    <div class="sc-no-credits-box">
+<div class="sc-no-credits-box">
 
-      <h2>🚫 No tienes créditos disponibles</h2>
+  <h2>🚫 No tienes créditos disponibles</h2>
 
-      <p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>
+  <p>Para crear tu Smart Card necesitas al menos 1 crédito.</p>
 
-      <p class="sc-highlight">
-        ✨ Activa un crédito y publica tu perfil en segundos.
-      </p>
+  <p class="sc-highlight">
+    ✨ Activa un crédito y publica tu perfil en segundos.
+  </p>
 
-      <div class="sc-buy-options">
+  <div class="sc-buy-options">
 
-        <a href="/?add-to-cart=1935" class="sc-buy-btn">
-          🪙 Comprar 1 crédito
-          <span class="sc-price">$24.900</span>
-        </a>
+    <a href="/?add-to-cart=1935" class="sc-buy-btn">
+      🪙 Comprar 1 crédito
+      <span class="sc-price">$24.900</span>
+    </a>
 
-        <a href="/?add-to-cart=4946" class="sc-buy-btn sc-buy-featured">
-          🔥 Comprar 5 créditos
-          <span class="sc-price">$99.900</span>
-        </a>
+    <a href="/?add-to-cart=4946" class="sc-buy-btn sc-buy-featured">
+      🔥 Comprar 5 créditos
+      <span class="sc-price">$99.900</span>
+    </a>
 
-        <a href="/?add-to-cart=4947" class="sc-buy-btn">
-          🪙 Comprar 10 créditos
-          <span class="sc-price">$169.900</span>
-        </a>
+    <a href="/?add-to-cart=4947" class="sc-buy-btn">
+      🪙 Comprar 10 créditos
+      <span class="sc-price">$169.900</span>
+    </a>
 
-      </div>
+  </div>
 
-      <a href="/dashboard/" class="sc-secondary-btn">
-        Volver al dashboard
-      </a>
+  <a href="/dashboard/" class="sc-secondary-btn">
+    Volver al dashboard
+  </a>
 
-    </div>
-  `;
+</div>
+`;
 
-  form.replaceWith(wrapper);
+  form.replaceWith(wrapper.firstElementChild || wrapper);
 }
 
 function initSmartCardsFrontend() {
