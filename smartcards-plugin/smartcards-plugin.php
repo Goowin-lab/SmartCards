@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.8
+ * Version: 3.0.9
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -350,23 +350,43 @@ if ( ! function_exists( 'sc_get_profile_style_settings' ) ) {
 
 if ( ! function_exists( 'sc_get_social_icon_fallback_svg' ) ) {
     function sc_get_social_icon_fallback_svg( $network_key ) {
-        $raw_key = strtolower( (string) $network_key );
-        $raw_key = preg_replace( '/\.svg$/', '', $raw_key );
+        $raw_key = strtolower( trim( (string) $network_key ) );
+        if ( function_exists( 'remove_accents' ) ) {
+            $raw_key = remove_accents( $raw_key );
+        }
+        $raw_key = preg_replace( '/\.svg$/i', '', $raw_key );
         $key = str_replace( [ '-', ' ' ], '_', $raw_key );
-        error_log( 'SOCIAL ICON KEY: ' . $key );
+        $key = preg_replace( '/_+/', '_', $key );
+        $key = trim( $key, '_' );
         $aliases = [
-            'maps'      => 'googlemaps',
-            'google_maps' => 'googlemaps',
-            'navegador' => 'website',
-            'sitio_web' => 'website',
-            'wompi'     => 'pay_wompi',
-            'epayco'    => 'pay_epayco',
-            'paypal'    => 'pay_paypal',
-            'payu'      => 'pay_payu',
-            'bold'      => 'pay_bold',
-            'stripe'    => 'pay_stripe',
-            'mercadopago' => 'pay_mercadopago',
-            'wise'      => 'pay_wise',
+            'telefono'       => 'whatsapp',
+            'phone'          => 'whatsapp',
+            'twitter'        => 'x',
+            'maps'           => 'googlemaps',
+            'google_maps'    => 'googlemaps',
+            'googlemap'      => 'googlemaps',
+            'google_map'     => 'googlemaps',
+            'web'            => 'website',
+            'url'            => 'website',
+            'navegador'      => 'website',
+            'sitio_web'      => 'website',
+            'paywompi'       => 'pay_wompi',
+            'wompi'          => 'pay_wompi',
+            'payepayco'      => 'pay_epayco',
+            'epayco'         => 'pay_epayco',
+            'paypaypal'      => 'pay_paypal',
+            'paypal'         => 'pay_paypal',
+            'paypayu'        => 'pay_payu',
+            'payu'           => 'pay_payu',
+            'paybold'        => 'pay_bold',
+            'bold'           => 'pay_bold',
+            'paystripe'      => 'pay_stripe',
+            'stripe'         => 'pay_stripe',
+            'paymercadopago' => 'pay_mercadopago',
+            'mercadopago'    => 'pay_mercadopago',
+            'mercado_pago'   => 'pay_mercadopago',
+            'paywise'        => 'pay_wise',
+            'wise'           => 'pay_wise',
         ];
 
         if ( isset( $aliases[ $key ] ) ) {
@@ -384,6 +404,7 @@ if ( ! function_exists( 'sc_get_social_icon_fallback_svg' ) ) {
             'googlemaps' => '<path d="M12 21s6-5.7 6-11a6 6 0 0 0-12 0c0 5.3 6 11 6 11z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2" fill="currentColor"/>',
             'website' => '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h16M12 4c2 2.1 3 4.7 3 8s-1 5.9-3 8c-2-2.1-3-4.7-3-8s1-5.9 3-8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
             'pay_wompi' => '<path d="M4 6l3 12 3-8 3 8 3-12 3 12" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            'pay_epayco' => '<rect x="4" y="6" width="16" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10h7M8 14h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
             'pay_paypal' => '<path fill="currentColor" d="M8 4h5.3c3 0 4.7 1.5 4.7 4 0 3-2.2 4.8-5.8 4.8h-1.7L9.8 20H6.5L8 4zm2.8 6h1.8c1.3 0 2.2-.7 2.2-1.8 0-.8-.6-1.2-1.7-1.2h-1.7l-.6 3z"/>',
             'pay_payu' => '<path d="M6 5v8c0 3.8 2.3 6 6 6s6-2.2 6-6V5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M9 5v8c0 1.9 1.1 3 3 3s3-1.1 3-3V5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
             'pay_bold' => '<rect x="6" y="3.5" width="12" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 8h6M9 12h6M10 16h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
