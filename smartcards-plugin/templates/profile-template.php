@@ -52,12 +52,21 @@ $font_urls = $profile_styles['font_urls'];
 $is_dark_theme = ('dark' === $theme);
 $user_text_color = $profile_styles['primary_text_color'];
 $button_text_color = $profile_styles['button_text_color'];
+$sc_color_redes = sanitize_hex_color((string) get_post_meta($post_id, 'sc_color_redes', true));
+if (!$sc_color_redes) {
+    $sc_color_redes = $profile_styles['social_color'] ?: $user_color;
+}
+
+$sc_color_button = sanitize_hex_color((string) get_post_meta($post_id, 'sc_color_button', true));
+if (!$sc_color_button) {
+    $sc_color_button = $profile_styles['button_color'] ?: $user_color;
+}
 
 if ($is_dark_theme) {
-    $body_style = '--sc-primary:#ffffff;--sc-text:#000000;--sc-text-dynamic:#ffffff;';
+    $body_style = '--user-color:' . $user_color . ';--sc-color-redes:' . $sc_color_redes . ';--sc-color-button:' . $sc_color_button . ';--sc-primary:#ffffff;--sc-text:#000000;--sc-text-dynamic:#ffffff;';
 } else {
     $body_style = $user_color
-        ? '--user-color:' . $user_color . ';--sc-text-dynamic:' . $user_color . ';--sc-text:' . $user_text_color . ';'
+        ? '--user-color:' . $user_color . ';--sc-color-redes:' . $sc_color_redes . ';--sc-color-button:' . $sc_color_button . ';--sc-text-dynamic:' . $user_color . ';--sc-text:' . $user_text_color . ';'
         : '';
 }
 
@@ -189,9 +198,9 @@ if (!$vcf_url) {
   :root {
     --sc-color-primary: <?php echo esc_html($profile_styles['primary_color']); ?>;
     --sc-color-role: <?php echo esc_html($profile_styles['role_color']); ?>;
-    --sc-color-button: <?php echo esc_html($profile_styles['button_color']); ?>;
+    --sc-color-button: <?php echo esc_html($sc_color_button); ?>;
     --sc-color-button-text: <?php echo esc_html($button_text_color); ?>;
-    --sc-color-redes: <?php echo esc_html($profile_styles['social_color']); ?>;
+    --sc-color-redes: <?php echo esc_html($sc_color_redes); ?>;
     --sc-font-name: "<?php echo esc_attr($profile_styles['name_font']); ?>", "Montserrat", sans-serif;
     --sc-font-role: "<?php echo esc_attr($profile_styles['role_font']); ?>", "Montserrat", sans-serif;
   }

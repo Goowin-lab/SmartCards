@@ -516,6 +516,25 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
   update_post_meta($smartcard_id, 'sc_vcf_attachment_id', (int) $vcf_attachment_id);
   update_post_meta($smartcard_id, 'sc_vcf_url', $vcf_url);
 
+  $profile_styles = sc_get_profile_style_settings($smartcard_id, $theme);
+  $user_color = $profile_styles['primary_color'];
+  $sc_color_redes = sanitize_hex_color((string) get_post_meta($smartcard_id, 'sc_color_redes', true));
+  if (!$sc_color_redes) {
+    $sc_color_redes = $profile_styles['social_color'] ?: $user_color;
+  }
+  $sc_color_button = sanitize_hex_color((string) get_post_meta($smartcard_id, 'sc_color_button', true));
+  if (!$sc_color_button) {
+    $sc_color_button = $profile_styles['button_color'] ?: $user_color;
+  }
+  $theme_body_class_map = [
+    'classic'   => 'theme-esencial',
+    'dark'      => 'theme-dark',
+    'corporate' => 'theme-corporativo',
+    'premium'   => 'theme-premium',
+  ];
+  $profile_container_class = 'perfil-publico ' . ($theme_body_class_map[$theme] ?? 'theme-esencial');
+  $profile_inline_style = '--user-color:' . $user_color . ';--sc-color-redes:' . $sc_color_redes . ';--sc-color-button:' . $sc_color_button . ';';
+
   // Construir HTML del perfil público
   $iconos = [
     'whatsapp' => ['https://wa.me/', 'whatsapp.svg'],
@@ -549,7 +568,7 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
   $html .= '  </div>';
   $html .= '</div>';
 
-  $html .= '<div class="perfil-publico">';
+  $html .= '<div class="' . esc_attr($profile_container_class) . '" data-sc-profile-id="' . esc_attr($smartcard_id) . '" style="' . esc_attr($profile_inline_style) . '">';
   $html .= '  <h2>' . esc_html($fullName) . '</h2>';
   if ($jobTitle) {
     $html .= '  <h4>' . esc_html($jobTitle) . '</h4>';
