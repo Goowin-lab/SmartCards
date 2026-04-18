@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.7
+ * Version: 3.0.7a
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -348,8 +348,72 @@ if ( ! function_exists( 'sc_get_profile_style_settings' ) ) {
     }
 }
 
+if ( ! function_exists( 'sc_get_social_icon_fallback_svg' ) ) {
+    function sc_get_social_icon_fallback_svg( $network_key ) {
+        $raw_key = strtolower( (string) $network_key );
+        $raw_key = preg_replace( '/\.svg$/', '', $raw_key );
+        $key = str_replace( [ '-', ' ' ], '_', $raw_key );
+        $aliases = [
+            'maps'      => 'googlemaps',
+            'google_maps' => 'googlemaps',
+            'navegador' => 'website',
+            'sitio_web' => 'website',
+            'wompi'     => 'pay_wompi',
+            'epayco'    => 'pay_epayco',
+            'paypal'    => 'pay_paypal',
+            'payu'      => 'pay_payu',
+            'bold'      => 'pay_bold',
+            'stripe'    => 'pay_stripe',
+            'mercadopago' => 'pay_mercadopago',
+            'wise'      => 'pay_wise',
+        ];
+
+        if ( isset( $aliases[ $key ] ) ) {
+            $key = $aliases[ $key ];
+        }
+
+        $icons = [
+            'whatsapp' => '<path fill="currentColor" d="M7.2 4.5c.4-.2.9-.1 1.2.3l1.3 1.8c.2.3.2.8 0 1.1l-.7 1c.8 1.6 2.1 2.9 3.7 3.7l1-.7c.3-.2.8-.2 1.1 0l1.8 1.3c.4.3.5.8.3 1.2-.6 1.4-1.9 2.3-3.4 2.3-4.8 0-8.7-3.9-8.7-8.7 0-1.5.9-2.8 2.4-3.3z"/>',
+            'instagram' => '<rect x="4" y="4" width="16" height="16" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16.8" cy="7.2" r="1.2" fill="currentColor"/>',
+            'facebook' => '<path fill="currentColor" d="M14 8h2V5h-2.4C10.9 5 10 6.7 10 8.9V11H8v3h2v7h3.3v-7h2.2l.5-3h-2.7V9.2c0-.8.2-1.2.7-1.2z"/>',
+            'linkedin' => '<path fill="currentColor" d="M5.5 9h3v10h-3V9zm1.5-4a1.7 1.7 0 1 1 0 3.4A1.7 1.7 0 0 1 7 5zm4 4h2.9v1.4c.6-.9 1.6-1.6 3.1-1.6 2.3 0 3.5 1.5 3.5 4.3V19h-3v-5.4c0-1.4-.5-2.1-1.6-2.1-1.2 0-1.9.8-1.9 2.4V19h-3V9z"/>',
+            'x' => '<path d="M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+            'tiktok' => '<path fill="currentColor" d="M14 4c.5 2.7 2 4.4 4.6 4.7v3.1c-1.7 0-3.2-.5-4.6-1.5v5.1c0 3.2-2.2 5.5-5.3 5.5-2.8 0-5-2.1-5-4.8s2.1-4.8 4.9-4.8c.5 0 1 .1 1.4.2v3.2c-.4-.2-.8-.3-1.2-.3-1 0-1.8.7-1.8 1.7s.8 1.7 1.8 1.7c1.2 0 2-.8 2-2.3V4h3.2z"/>',
+            'youtube' => '<rect x="3.5" y="6.5" width="17" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path fill="currentColor" d="M10 9.2v5.6l5-2.8-5-2.8z"/>',
+            'googlemaps' => '<path d="M12 21s6-5.7 6-11a6 6 0 0 0-12 0c0 5.3 6 11 6 11z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2" fill="currentColor"/>',
+            'website' => '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h16M12 4c2 2.1 3 4.7 3 8s-1 5.9-3 8c-2-2.1-3-4.7-3-8s1-5.9 3-8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+            'pay_wompi' => '<path d="M4 6l3 12 3-8 3 8 3-12 3 12" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            'pay_paypal' => '<path fill="currentColor" d="M8 4h5.3c3 0 4.7 1.5 4.7 4 0 3-2.2 4.8-5.8 4.8h-1.7L9.8 20H6.5L8 4zm2.8 6h1.8c1.3 0 2.2-.7 2.2-1.8 0-.8-.6-1.2-1.7-1.2h-1.7l-.6 3z"/>',
+            'pay_payu' => '<path d="M6 5v8c0 3.8 2.3 6 6 6s6-2.2 6-6V5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M9 5v8c0 1.9 1.1 3 3 3s3-1.1 3-3V5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+            'pay_bold' => '<rect x="6" y="3.5" width="12" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 8h6M9 12h6M10 16h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+            'pay_stripe' => '<path d="M16.5 7.2c-1.2-.6-2.4-.9-3.7-.9-1.8 0-2.8.7-2.8 1.7 0 2.8 7.2 1.4 7.2 6.5 0 2.5-2 4.2-5.3 4.2-1.7 0-3.4-.4-4.7-1.1" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>',
+            'pay_mercadopago' => '<path d="M4 12c2.2-3.2 4.7-4.8 8-4.8s5.8 1.6 8 4.8c-2.2 3.2-4.7 4.8-8 4.8S6.2 15.2 4 12z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 12c1.8 1.4 4.2 1.4 6 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+            'pay_wise' => '<path d="M5 12h13M13 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>',
+            'payment' => '<rect x="3" y="6" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M7 15h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+            'default' => '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 12h5M12 9.5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+        ];
+
+        if ( ! isset( $icons[ $key ] ) && 0 === strpos( $key, 'pay_' ) ) {
+            $key = 'payment';
+        }
+
+        $body = isset( $icons[ $key ] ) ? $icons[ $key ] : $icons['default'];
+        $label = trim( str_replace( [ '_', '-' ], ' ', preg_replace( '/\.svg$/', '', (string) $network_key ) ) );
+
+        if ( '' === $label ) {
+            $label = 'red social';
+        }
+
+        return '<svg class="icon-social" viewBox="0 0 24 24" role="img" aria-label="' . esc_attr( $label ) . '" focusable="false">' . $body . '</svg>';
+    }
+}
+
 if ( ! function_exists( 'sc_get_social_icon_markup' ) ) {
     function sc_get_social_icon_markup( $icon_filename, $label = '', $allow_inline_svg = false ) {
+        if ( $allow_inline_svg ) {
+            return sc_get_social_icon_fallback_svg( '' !== $label ? $label : $icon_filename );
+        }
+
         $candidates = [
             [
                 'path' => WP_CONTENT_DIR . '/uploads/2026/03/' . $icon_filename,
@@ -364,79 +428,6 @@ if ( ! function_exists( 'sc_get_social_icon_markup' ) ) {
         foreach ( $candidates as $candidate ) {
             if ( ! file_exists( $candidate['path'] ) || ! is_readable( $candidate['path'] ) ) {
                 continue;
-            }
-
-            if ( $allow_inline_svg && strtolower( pathinfo( $candidate['path'], PATHINFO_EXTENSION ) ) === 'svg' ) {
-                $svg = file_get_contents( $candidate['path'] );
-                if ( false !== $svg && '' !== trim( $svg ) ) {
-                    $svg = preg_replace( '/<\?xml.*?\?>/si', '', $svg );
-                    $svg = preg_replace( '/<!--.*?-->/s', '', $svg );
-                    $svg = preg_replace_callback(
-                        '/\s(fill|stroke)=(["\'])(.*?)\2/i',
-                        static function ( $matches ) {
-                            if ( strtolower( trim( $matches[3] ) ) === 'none' ) {
-                                return $matches[0];
-                            }
-
-                            return ' ' . strtolower( $matches[1] ) . '="currentColor"';
-                        },
-                        $svg
-                    );
-                    $svg = preg_replace_callback(
-                        '/\sstyle=(["\'])(.*?)\1/i',
-                        static function ( $matches ) {
-                            $style = preg_replace_callback(
-                                '/(?:^|;)\s*(fill|stroke)\s*:\s*([^;]+)\s*(?=;|$)/i',
-                                static function ( $style_matches ) {
-                                    if ( strtolower( trim( $style_matches[2] ) ) === 'none' ) {
-                                        return $style_matches[0];
-                                    }
-
-                                    return '; ' . strtolower( $style_matches[1] ) . ': currentColor';
-                                },
-                                $matches[2]
-                            );
-                            $style = trim( preg_replace( '/\s+/', ' ', $style ) );
-
-                            return ' style=' . $matches[1] . $style . $matches[1];
-                        },
-                        $svg
-                    );
-                    $svg = preg_replace_callback(
-                        '/<svg\b([^>]*)>/i',
-                        static function ( $matches ) use ( $label ) {
-                            $attrs = $matches[1];
-
-                            if ( preg_match( '/\bclass=(["\'])(.*?)\1/i', $attrs, $class_match ) ) {
-                                $classes = trim( $class_match[2] . ' icon-social' );
-                                $attrs = preg_replace(
-                                    '/\bclass=(["\']).*?\1/i',
-                                    ' class="' . esc_attr( $classes ) . '"',
-                                    $attrs,
-                                    1
-                                );
-                            } else {
-                                $attrs .= ' class="icon-social"';
-                            }
-
-                            if ( $label !== '' && ! preg_match( '/\baria-label=/i', $attrs ) ) {
-                                $attrs .= ' role="img" aria-label="' . esc_attr( $label ) . '"';
-                            } elseif ( ! preg_match( '/\baria-hidden=/i', $attrs ) ) {
-                                $attrs .= ' aria-hidden="true"';
-                            }
-
-                            if ( ! preg_match( '/\bfocusable=/i', $attrs ) ) {
-                                $attrs .= ' focusable="false"';
-                            }
-
-                            return '<svg' . $attrs . '>';
-                        },
-                        $svg,
-                        1
-                    );
-
-                    return $svg;
-                }
             }
 
             return sprintf(
