@@ -1680,3 +1680,13 @@ a.sc-google-btn:active {
 .sc-buy-featured:hover {
   background: #0176d1;
 }
+
+body.sc-theme-premium a.btn-guardar-contacto {
+  display: block;
+  text-align: center;
+  padding: 16px;
+  border-radius: 12px;
+  background-color: var(--sc-color-button) !important;
+  color: #ffffff !important;
+  text-decoration: none;
+}
