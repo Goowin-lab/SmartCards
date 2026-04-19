@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.16
+ * Version: 3.0.17
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards

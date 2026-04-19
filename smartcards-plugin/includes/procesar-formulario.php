@@ -14,6 +14,8 @@ function procesar_formulario() {
 
     $user_id = get_current_user_id();
 
+    error_log('POST DEBUG: ' . print_r($_POST, true));
+
     // Verificar créditos disponibles
     $credits = (int) get_user_meta( $user_id, 'smartcards_credits', true );
     if ( $credits <= 0 ) {
@@ -432,6 +434,10 @@ if ($page_id && !is_wp_error($page_id)) {
     error_log('[SC DEBUG][procesar_formulario] status: ' . (string) get_post_status( $page_id ));
     error_log('[SC DEBUG][procesar_formulario] permalink: ' . (string) $url_perfil);
     error_log('[SC DEBUG][procesar_formulario] url_to_postid: ' . (int) $resolved_post_id);
+    error_log('META SAVED: ' . json_encode([
+        'redes'  => get_post_meta($page_id, 'sc_color_redes', true),
+        'button' => get_post_meta($page_id, 'sc_color_button', true),
+    ]));
 
     // Llamar función de notificación después de crear exitosamente el perfil
 $user_id = get_current_user_id();

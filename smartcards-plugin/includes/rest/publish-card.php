@@ -82,6 +82,9 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
   $smartcard_id = (int) $request->get_param('smartcard_id');
   $cache_ttl    = 3600;
 
+  error_log('POST DEBUG: ' . print_r($_POST, true));
+  error_log('REST DEBUG: ' . print_r($request->get_params(), true));
+
   if (!$user_id || !$smartcard_id) {
     return new WP_Error('invalid', 'Datos inválidos', ['status' => 400]);
   }
@@ -398,6 +401,11 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
       }
     }
   }
+
+  error_log('META SAVED: ' . json_encode([
+    'redes'  => get_post_meta($smartcard_id, 'sc_color_redes', true),
+    'button' => get_post_meta($smartcard_id, 'sc_color_button', true),
+  ]));
 
   $address = (string) $request->get_param('address');
   if ($address) {
