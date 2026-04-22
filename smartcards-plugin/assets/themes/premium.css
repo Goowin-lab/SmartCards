@@ -223,11 +223,22 @@ body.smartcards-profile {
 }
 
 body.sc-theme-premium a.btn-guardar-contacto {
-  display: block;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* espacio entre texto e icono */
+
+  width: 350px;
+  max-width: 100%;
+
+  margin: 0 auto; /* centra el bloque */
+
   padding: 16px;
   border-radius: 12px;
+
   background-color: var(--sc-color-button) !important;
   color: #ffffff !important;
+
+  text-align: center;
   text-decoration: none;
 }
