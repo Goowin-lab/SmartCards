@@ -285,15 +285,6 @@ if (!$vcf_url) {
 <?php wp_head(); ?>
 </head>
 <body class="smartcards-profile sc-theme-<?php echo esc_attr($theme); ?> <?php echo esc_attr($theme_body_class); ?>"<?php echo $body_style ? ' style="' . esc_attr($body_style) . '"' : ''; ?>>
-<?php
-echo '<pre style="color:red">';
-print_r([
-    'sc_color_redes'  => $sc_color_redes,
-    'sc_color_button' => $sc_color_button,
-    'user_color'      => $user_color,
-]);
-echo '</pre>';
-?>
 
 <div class="profile-cover-wrapper">
 <?php if ($cover_url): ?>
