@@ -1681,16 +1681,25 @@ a.sc-google-btn:active {
   background: #0176d1;
 }
 
+body.sc-theme-premium .btn-contacto-link {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto 20px !important;
+}
+
 body.sc-theme-premium a.btn-guardar-contacto {
-  display: flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  gap: 8px; /* espacio entre texto e icono */
+  gap: 8px;
 
-  width: 350px;
+  width: min(350px, 100%) !important;
   max-width: 100%;
 
-  margin: 0 auto; /* centra el bloque */
+  margin: 0 auto;
 
   padding: 16px;
   border-radius: 12px;
