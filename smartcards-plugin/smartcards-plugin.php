@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.23
+ * Version: 3.0.25
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -2106,11 +2106,68 @@ add_shortcode('sc_iap_credito_diez', function(){
   <?php return ob_get_clean();
 });
 
-// SOLO usuarios logueados
+// App IAP: cookie WP o Bearer JWT móvil obligatorio.
 add_action('wp_ajax_sc_sc_iap_complete', 'sc_sc_iap_complete');
-// ❌ NO pongas el nopriv
+add_action('wp_ajax_nopriv_sc_sc_iap_complete', 'sc_sc_iap_complete');
+
+if (!function_exists('sc_authenticate_iap_bearer_user')) {
+  function sc_authenticate_iap_bearer_user() {
+    if ( is_user_logged_in() ) {
+      return get_current_user_id();
+    }
+
+    $authorization = '';
+    if ( isset($_SERVER['HTTP_AUTHORIZATION']) ) {
+      $authorization = (string) $_SERVER['HTTP_AUTHORIZATION'];
+    } elseif ( isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) ) {
+      $authorization = (string) $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    } elseif ( function_exists('apache_request_headers') ) {
+      $headers = apache_request_headers();
+      if ( isset($headers['Authorization']) ) {
+        $authorization = (string) $headers['Authorization'];
+      } elseif ( isset($headers['authorization']) ) {
+        $authorization = (string) $headers['authorization'];
+      }
+    }
+
+    if ( ! preg_match('/Bearer\s+(.+)/i', $authorization, $matches) ) {
+      return 0;
+    }
+
+    $token = trim($matches[1]);
+    if ( ! $token || ! defined('JWT_AUTH_SECRET_KEY') || ! JWT_AUTH_SECRET_KEY ) {
+      return 0;
+    }
+
+    if ( ! class_exists('Firebase\JWT\JWT') || ! class_exists('Firebase\JWT\Key') ) {
+      return 0;
+    }
+
+    try {
+      $payload = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key(JWT_AUTH_SECRET_KEY, 'HS256'));
+      $user_id = 0;
+
+      if ( isset($payload->data->user->id) ) {
+        $user_id = (int) $payload->data->user->id;
+      } elseif ( isset($payload->user_id) ) {
+        $user_id = (int) $payload->user_id;
+      }
+
+      if ( $user_id <= 0 || ! get_user_by('id', $user_id) ) {
+        return 0;
+      }
+
+      wp_set_current_user($user_id);
+      return $user_id;
+    } catch (\Throwable $e) {
+      return 0;
+    }
+  }
+}
 
 function sc_sc_iap_complete(){
+  sc_authenticate_iap_bearer_user();
+
   if ( ! is_user_logged_in() ) {
     // Devuelve mensaje claro; el JS lo puede usar para redirigir
     wp_send_json_error(['code'=>'auth_required','message'=>'Debes iniciar sesión para completar la compra.']);
@@ -2126,13 +2183,17 @@ function sc_sc_iap_complete(){
   $purchaseToken = sanitize_text_field($j['purchaseToken'] ?? '');
 
   // Normaliza plataforma (solo aceptamos ios/android)
-if ($platform !== 'ios' && $platform !== 'android') {
-  wp_send_json_error(['message' => 'Plataforma web: usa la compra en WooCommerce.']);
-}
+  if ($platform !== 'ios' && $platform !== 'android') {
+    wp_send_json_error(['message' => 'Solo se aceptan compras in-app desde iOS o Android.']);
+  }
 
   if (!$productId) wp_send_json_error(['message'=>'Producto inválido.']);
-  if ($platform === 'ios' && empty($receipt))        wp_send_json_error(['message'=>'Recibo iOS faltante.']);
-  if ($platform === 'android' && empty($purchaseToken)) wp_send_json_error(['message'=>'Token de compra Android faltante.']);
+  if ($platform === 'ios' && empty($receipt) && empty($transactionId)) {
+    wp_send_json_error(['message'=>'Transacción iOS faltante.']);
+  }
+  if ($platform === 'android' && empty($purchaseToken) && empty($transactionId)) {
+    wp_send_json_error(['message'=>'Token de compra Android faltante.']);
+  }
 
   $credits = 0;
   if ($productId === 'creditos_smartcards_1')  $credits = 1;
@@ -2141,8 +2202,66 @@ if ($platform !== 'ios' && $platform !== 'android') {
   if ($credits <= 0) wp_send_json_error(['message'=>'SKU desconocido.']);
 
   $user_id = get_current_user_id();
+  $idempotency_source = $transactionId ?: $purchaseToken;
+  if ( ! empty($idempotency_source) ) {
+    $tx_option = 'sc_iap_tx_' . md5($platform . '|' . $idempotency_source);
+    $already = get_option($tx_option);
+    if ( $already ) {
+      wp_send_json_success([
+        'message' => 'Transacción ya procesada',
+        'duplicate' => true,
+        'credits' => (int) get_user_meta($user_id, 'smartcards_credits', true),
+      ]);
+    }
+
+    $old_logs = get_user_meta($user_id, 'sc_iap_log', false);
+    foreach ( $old_logs as $old_log ) {
+      $old_log = maybe_unserialize($old_log);
+      if ( ! is_array($old_log) ) {
+        continue;
+      }
+
+      $same_transaction = $transactionId
+        && ! empty($old_log['transactionId'])
+        && (string) $old_log['transactionId'] === (string) $transactionId;
+      $same_token = $purchaseToken
+        && ! empty($old_log['purchaseToken'])
+        && (string) $old_log['purchaseToken'] === (string) $purchaseToken;
+
+      if ( $same_transaction || $same_token ) {
+        update_option($tx_option, [
+          'user'      => $user_id,
+          'productId' => $productId,
+          'platform'  => $platform,
+          'credits'   => $credits,
+          'ts'        => time(),
+          'source'    => 'legacy_log',
+        ], false);
+
+        wp_send_json_success([
+          'message' => 'Transacción ya procesada',
+          'duplicate' => true,
+          'credits' => (int) get_user_meta($user_id, 'smartcards_credits', true),
+        ]);
+      }
+    }
+  }
+
   $current = (int) get_user_meta($user_id, 'smartcards_credits', true);
-  update_user_meta($user_id, 'smartcards_credits', $current + $credits);
+  $new_total = $current + $credits;
+  update_user_meta($user_id, 'smartcards_credits', $new_total);
+  update_user_meta($user_id, 'smartcards_credits_updated', current_time('mysql'));
+  update_user_meta($user_id, 'smartcards_credits_updated_at', time());
+
+  if ( ! empty($idempotency_source) ) {
+    update_option($tx_option, [
+      'user'      => $user_id,
+      'productId' => $productId,
+      'platform'  => $platform,
+      'credits'   => $credits,
+      'ts'        => time(),
+    ], false);
+  }
 
   add_user_meta($user_id, 'sc_iap_log', [
     'time'          => current_time('mysql'),
@@ -2153,7 +2272,11 @@ if ($platform !== 'ios' && $platform !== 'android') {
     'receipt_len'   => $receipt ? strlen(maybe_serialize($receipt)) : 0,
   ]);
 
-  wp_send_json_success(['message'=>'Créditos acreditados']);
+  wp_send_json_success([
+    'message'=>'Créditos acreditados',
+    'credits_added' => $credits,
+    'credits' => $new_total,
+  ]);
 }
 
 // Normaliza los args de wc_price para evitar "Undefined array key 'in_span'"
