@@ -1559,6 +1559,12 @@ a.sc-google-btn:active {
   font-family: var(--sc-font-role);
 }
 
+.perfil-publico.theme-premium {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .theme-premium .btn-guardar-contacto {
   all: unset;
   box-sizing: border-box;
@@ -1681,17 +1687,10 @@ a.sc-google-btn:active {
   background: #0176d1;
 }
 
-body.sc-theme-premium .btn-contacto-link {
+body.sc-theme-premium a.btn-contacto-link.btn-guardar-contacto,
+.perfil-publico.theme-premium a.btn-contacto-link.btn-guardar-contacto {
+  box-sizing: border-box;
   display: flex !important;
-  justify-content: center !important;
-  align-items: center;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 auto 20px !important;
-}
-
-body.sc-theme-premium a.btn-guardar-contacto {
-  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -1699,7 +1698,7 @@ body.sc-theme-premium a.btn-guardar-contacto {
   width: min(350px, 100%) !important;
   max-width: 100%;
 
-  margin: 0 auto;
+  margin: 0 auto 20px !important;
 
   padding: 16px;
   border-radius: 12px;

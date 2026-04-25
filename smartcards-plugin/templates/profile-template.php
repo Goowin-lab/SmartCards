@@ -73,8 +73,13 @@ if ($is_dark_theme) {
 $theme_css_path = plugin_dir_path(__FILE__) . '../assets/themes/' . $theme . '.css';
 if (!file_exists($theme_css_path)) {
     $theme = 'classic';
+    $theme_css_path = plugin_dir_path(__FILE__) . '../assets/themes/' . $theme . '.css';
 }
 $theme_css_url = plugin_dir_url(__FILE__) . '../assets/themes/' . $theme . '.css';
+$theme_css_version = file_exists($theme_css_path) ? filemtime($theme_css_path) : '';
+if ($theme_css_version) {
+    $theme_css_url = add_query_arg('ver', $theme_css_version, $theme_css_url);
+}
 
 $icon_map = [
     'whatsapp'        => ['icon' => 'whatsapp.svg',   'type' => 'whatsapp'],
@@ -298,7 +303,7 @@ if (!$vcf_url) {
 </div>
 </div>
 
-<div class="perfil-publico" data-sc-profile-id="<?php echo esc_attr($post_id); ?>">
+<div class="perfil-publico <?php echo esc_attr($theme_body_class); ?>" data-sc-profile-id="<?php echo esc_attr($post_id); ?>">
 <h2><?php echo esc_html($full_name); ?></h2>
 
 <?php if ($job_title): ?>

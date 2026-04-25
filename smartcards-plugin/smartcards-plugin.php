@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.22
+ * Version: 3.0.23
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -648,7 +648,9 @@ exit;
 
 // Cargar estilos y scripts
 function smartcards_enqueue_assets() {
-    wp_enqueue_style('smartcards-styles', SMARTCARDS_PLUGIN_URL . 'includes/assets/css/smartcards-styles.css', [], '1.0');
+    $smartcards_styles_path = SMARTCARDS_PLUGIN_DIR . 'includes/assets/css/smartcards-styles.css';
+    $smartcards_styles_version = file_exists($smartcards_styles_path) ? filemtime($smartcards_styles_path) : '1.0';
+    wp_enqueue_style('smartcards-styles', SMARTCARDS_PLUGIN_URL . 'includes/assets/css/smartcards-styles.css', [], $smartcards_styles_version);
 
     // Scripts QR y frontend
     wp_enqueue_script(
@@ -2536,6 +2538,81 @@ add_filter('the_content', function($content){
 
     return $content;
 }, 20);
+
+add_filter('the_content', function($content){
+
+    if (!is_page()) {
+        return $content;
+    }
+
+    global $post;
+
+    if (!$post || strpos($content, 'perfil-publico') === false) {
+        return $content;
+    }
+
+    $owner = get_post_meta($post->ID, 'sc_owner_user_id', true);
+
+    if (!$owner) {
+        return $content;
+    }
+
+    $theme = sanitize_key((string) get_post_meta($post->ID, 'sc_theme', true));
+    $theme_class_map = [
+        'classic'   => 'theme-esencial',
+        'dark'      => 'theme-dark',
+        'corporate' => 'theme-corporativo',
+        'premium'   => 'theme-premium',
+    ];
+    $theme_class = $theme_class_map[$theme] ?? '';
+
+    if (
+        $theme_class
+        && !preg_match('/class=(["\'])[^"\']*\bperfil-publico\b[^"\']*\b' . preg_quote($theme_class, '/') . '\b[^"\']*\1/', $content)
+    ) {
+        $content = preg_replace(
+            '/class=(["\'])perfil-publico(?![^"\']*theme-)([^"\']*)\1/',
+            'class=$1perfil-publico ' . esc_attr($theme_class) . '$2$1',
+            $content,
+            1
+        );
+    }
+
+    if ($theme !== 'premium') {
+        return $content;
+    }
+
+    return preg_replace_callback(
+        '/<a\b([^>]*\bclass=(["\'])([^"\']*\bbtn-contacto-link\b[^"\']*)\2[^>]*)>(.*?)<\/a>/is',
+        function ($matches) {
+            $attrs = $matches[1];
+            $quote = $matches[2];
+            $classes = preg_split('/\s+/', trim($matches[3]));
+            $classes = array_filter($classes);
+
+            foreach (['sc-btn-contact', 'btn-guardar-contacto'] as $required_class) {
+                if (!in_array($required_class, $classes, true)) {
+                    $classes[] = $required_class;
+                }
+            }
+
+            $attrs = preg_replace(
+                '/\bclass=(["\'])([^"\']*)\1/',
+                'class=' . $quote . esc_attr(implode(' ', $classes)) . $quote,
+                $attrs,
+                1
+            );
+
+            $inner = $matches[4];
+            if (trim(wp_strip_all_tags($inner)) === '') {
+                $inner = 'Guardar contacto ↓';
+            }
+
+            return '<a' . $attrs . '>' . $inner . '</a>';
+        },
+        $content
+    );
+}, 22);
 
 add_filter('the_content', function($content){
 
