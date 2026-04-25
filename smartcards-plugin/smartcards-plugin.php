@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.30
+ * Version: 3.0.31
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -2169,6 +2169,118 @@ if (!function_exists('sc_authenticate_iap_bearer_user')) {
   }
 }
 
+if (!function_exists('sc_iap_marker_option_name')) {
+  function sc_iap_marker_option_name($key) {
+    return 'sc_iap_marker_' . md5((string) $key);
+  }
+}
+
+if (!function_exists('sc_iap_build_marker_keys')) {
+  function sc_iap_build_marker_keys($platform, $product_id, $transaction_id, $original_transaction_id, $purchase_token, $purchase_date, $user_id) {
+    $keys = [];
+
+    if ($transaction_id !== '') {
+      $keys[] = 'tx|' . $platform . '|' . $transaction_id;
+    }
+
+    if ($original_transaction_id !== '') {
+      $keys[] = 'original_tx|' . $platform . '|' . $original_transaction_id;
+    }
+
+    if ($purchase_token !== '') {
+      $keys[] = 'token|' . $platform . '|' . $purchase_token;
+    }
+
+    if ($purchase_date !== '') {
+      $keys[] = 'purchase_date|' . $platform . '|' . (int) $user_id . '|' . $product_id . '|' . $purchase_date;
+    }
+
+    return array_values(array_unique($keys));
+  }
+}
+
+if (!function_exists('sc_iap_find_existing_marker')) {
+  function sc_iap_find_existing_marker($marker_keys, $platform, $transaction_id, $purchase_token) {
+    foreach ($marker_keys as $key) {
+      $option_name = sc_iap_marker_option_name($key);
+      $marker = get_option($option_name, false);
+      if ($marker !== false) {
+        return [
+          'key' => $key,
+          'option' => $option_name,
+          'marker' => $marker,
+        ];
+      }
+    }
+
+    $legacy_options = [];
+    if ($transaction_id !== '') {
+      $legacy_options[] = 'sc_iap_tx_' . md5($platform . '|' . $transaction_id);
+      $legacy_options[] = 'sc_iap_tx_' . $transaction_id;
+    }
+    if ($purchase_token !== '') {
+      $legacy_options[] = 'sc_iap_tx_' . md5($platform . '|' . $purchase_token);
+      $legacy_options[] = 'sc_iap_tx_' . $purchase_token;
+    }
+
+    foreach (array_unique($legacy_options) as $option_name) {
+      $marker = get_option($option_name, false);
+      if ($marker !== false) {
+        return [
+          'key' => $option_name,
+          'option' => $option_name,
+          'marker' => $marker,
+          'legacy' => true,
+        ];
+      }
+    }
+
+    return null;
+  }
+}
+
+if (!function_exists('sc_iap_find_legacy_log_duplicate')) {
+  function sc_iap_find_legacy_log_duplicate($user_id, $marker_keys, $product_id, $transaction_id, $original_transaction_id, $purchase_token, $purchase_date) {
+    $old_logs = get_user_meta($user_id, 'sc_iap_log', false);
+
+    foreach ($old_logs as $old_log) {
+      $old_log = maybe_unserialize($old_log);
+      if (!is_array($old_log)) {
+        continue;
+      }
+
+      $old_keys = isset($old_log['idempotency_keys']) && is_array($old_log['idempotency_keys'])
+        ? $old_log['idempotency_keys']
+        : [];
+
+      if ($old_keys && array_intersect($marker_keys, $old_keys)) {
+        return $old_log;
+      }
+
+      $same_transaction = $transaction_id
+        && !empty($old_log['transactionId'])
+        && (string) $old_log['transactionId'] === (string) $transaction_id;
+      $same_original_transaction = $original_transaction_id
+        && !empty($old_log['originalTransactionId'])
+        && (string) $old_log['originalTransactionId'] === (string) $original_transaction_id;
+      $same_token = $purchase_token
+        && !empty($old_log['purchaseToken'])
+        && (string) $old_log['purchaseToken'] === (string) $purchase_token;
+      $same_purchase_date = $purchase_date
+        && !empty($old_log['purchaseDate'])
+        && !empty($old_log['productId'])
+        && (string) $old_log['purchaseDate'] === (string) $purchase_date
+        && (string) $old_log['productId'] === (string) $product_id;
+
+      if ($same_transaction || $same_original_transaction || $same_token || $same_purchase_date) {
+        return $old_log;
+      }
+    }
+
+    return null;
+  }
+}
+
 function sc_sc_iap_complete(){
   sc_authenticate_iap_bearer_user();
 
@@ -2180,11 +2292,19 @@ function sc_sc_iap_complete(){
   $raw = file_get_contents('php://input');
   $j   = json_decode($raw, true) ?: $_POST;
 
-  $productId     = sanitize_text_field($j['productId'] ?? '');
-  $transactionId = sanitize_text_field($j['transactionId'] ?? '');
-  $platform      = strtolower(sanitize_text_field($j['platform'] ?? ''));
-  $receipt       = $j['receipt'] ?? null;
-  $purchaseToken = sanitize_text_field($j['purchaseToken'] ?? '');
+  $productId = sanitize_text_field($j['productId'] ?? $j['product_id'] ?? '');
+  $transactionId = sanitize_text_field($j['transactionId'] ?? $j['transaction_id'] ?? $j['revenuecatTransactionId'] ?? '');
+  $originalTransactionId = sanitize_text_field($j['originalTransactionId'] ?? $j['original_transaction_id'] ?? '');
+  $platform = strtolower(sanitize_text_field($j['platform'] ?? ''));
+  $receipt = $j['receipt'] ?? null;
+  $purchaseToken = sanitize_text_field($j['purchaseToken'] ?? $j['purchase_token'] ?? '');
+  $purchaseDate = sanitize_text_field($j['purchaseDate'] ?? $j['purchase_date'] ?? '');
+  $appUserId = sanitize_text_field($j['appUserId'] ?? $j['app_user_id'] ?? '');
+  $source = sanitize_text_field($j['source'] ?? 'purchase');
+
+  if (!$transactionId && is_scalar($receipt) && strlen((string) $receipt) <= 200) {
+    $transactionId = sanitize_text_field((string) $receipt);
+  }
 
   // Normaliza plataforma (solo aceptamos ios/android)
   if ($platform !== 'ios' && $platform !== 'android') {
@@ -2192,10 +2312,10 @@ function sc_sc_iap_complete(){
   }
 
   if (!$productId) wp_send_json_error(['message'=>'Producto inválido.']);
-  if ($platform === 'ios' && empty($receipt) && empty($transactionId)) {
+  if ($platform === 'ios' && empty($receipt) && empty($transactionId) && empty($originalTransactionId) && empty($purchaseDate)) {
     wp_send_json_error(['message'=>'Transacción iOS faltante.']);
   }
-  if ($platform === 'android' && empty($purchaseToken) && empty($transactionId)) {
+  if ($platform === 'android' && empty($purchaseToken) && empty($transactionId) && empty($purchaseDate)) {
     wp_send_json_error(['message'=>'Token de compra Android faltante.']);
   }
 
@@ -2206,49 +2326,86 @@ function sc_sc_iap_complete(){
   if ($credits <= 0) wp_send_json_error(['message'=>'SKU desconocido.']);
 
   $user_id = get_current_user_id();
-  $idempotency_source = $transactionId ?: $purchaseToken;
-  if ( ! empty($idempotency_source) ) {
-    $tx_option = 'sc_iap_tx_' . md5($platform . '|' . $idempotency_source);
-    $already = get_option($tx_option);
-    if ( $already ) {
-      wp_send_json_success([
-        'message' => 'Transacción ya procesada',
-        'duplicate' => true,
-        'credits' => (int) get_user_meta($user_id, 'smartcards_credits', true),
-      ]);
+  $marker_keys = sc_iap_build_marker_keys(
+    $platform,
+    $productId,
+    $transactionId,
+    $originalTransactionId,
+    $purchaseToken,
+    $purchaseDate,
+    $user_id
+  );
+
+  if (empty($marker_keys)) {
+    wp_send_json_error(['message' => 'Identificador de compra faltante.']);
+  }
+
+  $existing_marker = sc_iap_find_existing_marker($marker_keys, $platform, $transactionId, $purchaseToken);
+  if ($existing_marker) {
+    wp_send_json_success([
+      'message' => 'Transacción ya procesada',
+      'duplicate' => true,
+      'credits' => (int) get_user_meta($user_id, 'smartcards_credits', true),
+      'idempotency_key' => $existing_marker['key'],
+    ]);
+  }
+
+  $legacy_duplicate = sc_iap_find_legacy_log_duplicate(
+    $user_id,
+    $marker_keys,
+    $productId,
+    $transactionId,
+    $originalTransactionId,
+    $purchaseToken,
+    $purchaseDate
+  );
+
+  if ($legacy_duplicate) {
+    $legacy_marker = [
+      'user' => $user_id,
+      'productId' => $productId,
+      'platform' => $platform,
+      'credits' => $credits,
+      'ts' => time(),
+      'source' => 'legacy_log',
+      'idempotency_keys' => $marker_keys,
+    ];
+
+    foreach ($marker_keys as $key) {
+      add_option(sc_iap_marker_option_name($key), $legacy_marker, '', 'no');
     }
 
-    $old_logs = get_user_meta($user_id, 'sc_iap_log', false);
-    foreach ( $old_logs as $old_log ) {
-      $old_log = maybe_unserialize($old_log);
-      if ( ! is_array($old_log) ) {
-        continue;
-      }
+    wp_send_json_success([
+      'message' => 'Transacción ya procesada',
+      'duplicate' => true,
+      'credits' => (int) get_user_meta($user_id, 'smartcards_credits', true),
+      'idempotency_key' => $marker_keys[0],
+    ]);
+  }
 
-      $same_transaction = $transactionId
-        && ! empty($old_log['transactionId'])
-        && (string) $old_log['transactionId'] === (string) $transactionId;
-      $same_token = $purchaseToken
-        && ! empty($old_log['purchaseToken'])
-        && (string) $old_log['purchaseToken'] === (string) $purchaseToken;
+  $marker_data = [
+    'user' => $user_id,
+    'appUserId' => $appUserId,
+    'productId' => $productId,
+    'platform' => $platform,
+    'credits' => $credits,
+    'transactionId' => $transactionId,
+    'originalTransactionId' => $originalTransactionId,
+    'purchaseToken' => $purchaseToken,
+    'purchaseDate' => $purchaseDate,
+    'source' => $source,
+    'idempotency_keys' => $marker_keys,
+    'ts' => time(),
+  ];
 
-      if ( $same_transaction || $same_token ) {
-        update_option($tx_option, [
-          'user'      => $user_id,
-          'productId' => $productId,
-          'platform'  => $platform,
-          'credits'   => $credits,
-          'ts'        => time(),
-          'source'    => 'legacy_log',
-        ], false);
-
-        wp_send_json_success([
-          'message' => 'Transacción ya procesada',
-          'duplicate' => true,
-          'credits' => (int) get_user_meta($user_id, 'smartcards_credits', true),
-        ]);
-      }
-    }
+  $primary_marker_option = sc_iap_marker_option_name($marker_keys[0]);
+  if (!add_option($primary_marker_option, $marker_data, '', 'no')) {
+    wp_send_json_success([
+      'message' => 'Transacción ya procesada',
+      'duplicate' => true,
+      'credits' => (int) get_user_meta($user_id, 'smartcards_credits', true),
+      'idempotency_key' => $marker_keys[0],
+    ]);
   }
 
   $current = (int) get_user_meta($user_id, 'smartcards_credits', true);
@@ -2257,14 +2414,10 @@ function sc_sc_iap_complete(){
   update_user_meta($user_id, 'smartcards_credits_updated', current_time('mysql'));
   update_user_meta($user_id, 'smartcards_credits_updated_at', time());
 
-  if ( ! empty($idempotency_source) ) {
-    update_option($tx_option, [
-      'user'      => $user_id,
-      'productId' => $productId,
-      'platform'  => $platform,
-      'credits'   => $credits,
-      'ts'        => time(),
-    ], false);
+  $marker_data['credited_at'] = current_time('mysql');
+  update_option($primary_marker_option, $marker_data, false);
+  foreach (array_slice($marker_keys, 1) as $key) {
+    add_option(sc_iap_marker_option_name($key), $marker_data, '', 'no');
   }
 
   add_user_meta($user_id, 'sc_iap_log', [
@@ -2272,14 +2425,21 @@ function sc_sc_iap_complete(){
     'productId'     => $productId,
     'platform'      => $platform,
     'transactionId' => $transactionId,
+    'originalTransactionId' => $originalTransactionId,
     'purchaseToken' => $purchaseToken,
+    'purchaseDate'  => $purchaseDate,
+    'appUserId'     => $appUserId,
+    'source'        => $source,
+    'idempotency_keys' => $marker_keys,
     'receipt_len'   => $receipt ? strlen(maybe_serialize($receipt)) : 0,
   ]);
 
   wp_send_json_success([
     'message'=>'Créditos acreditados',
+    'duplicate' => false,
     'credits_added' => $credits,
     'credits' => $new_total,
+    'idempotency_key' => $marker_keys[0],
   ]);
 }
 
