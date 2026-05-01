@@ -39,6 +39,22 @@ function sc_get_my_smartcards(WP_REST_Request $request) {
       $name = (string) $post->post_title;
     }
 
+    $avatar_id = (int) get_post_meta($post->ID, 'avatar_id', true);
+    if (!$avatar_id) {
+      $avatar_id = (int) get_post_meta($post->ID, 'sc_avatar_id', true);
+    }
+    if (!$avatar_id) {
+      $avatar_id = (int) get_post_thumbnail_id($post->ID);
+    }
+
+    $avatar_url = '';
+    if ($avatar_id) {
+      $avatar_url = (string) wp_get_attachment_url($avatar_id);
+    }
+    if (!$avatar_url) {
+      $avatar_url = (string) get_avatar_url($user_id);
+    }
+
     $cards[] = [
       'id'         => (int) $post->ID,
       'name'       => $name,
@@ -46,6 +62,7 @@ function sc_get_my_smartcards(WP_REST_Request $request) {
       'slug'       => (string) $post->post_name,
       'permalink'  => get_permalink($post->ID),
       'status'     => $status,
+      'avatar'     => $avatar_url,
       'created_at' => (string) $post->post_date,
     ];
   }
