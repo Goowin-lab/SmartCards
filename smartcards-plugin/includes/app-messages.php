@@ -236,6 +236,23 @@ function sc_get_message_log_counts( $message_id ) {
     ];
 }
 
+function sc_get_auto_onboarding_messages() {
+    return [
+        [
+            'id'   => 'auto_create_profile',
+            'text' => 'Tienes un credito gratis. Crea tu primera Smart Card.',
+        ],
+        [
+            'id'   => 'auto_complete_profile',
+            'text' => 'Completa tu perfil y elige una plantilla.',
+        ],
+        [
+            'id'   => 'auto_share_card',
+            'text' => "Comparte tu tarjeta desde 'Mis Smart Cards'.",
+        ],
+    ];
+}
+
 add_action( 'rest_api_init', 'sc_register_app_messages_routes' );
 function sc_register_app_messages_routes() {
     register_rest_route(
@@ -453,6 +470,30 @@ function sc_render_app_messages_admin_page() {
     <div class="wrap">
         <h1>Mensajes App</h1>
         <p>Crea mensajes globales para mostrarlos en el dashboard de la app. El endpoint solo entrega mensajes activos y no vencidos.</p>
+
+        <h2>Mensajes automaticos</h2>
+        <table class="widefat fixed striped" style="margin-bottom: 24px;">
+            <thead>
+                <tr>
+                    <th>Mensaje</th>
+                    <th style="width: 160px;">ID</th>
+                    <th style="width: 130px;">Analiticas</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ( sc_get_auto_onboarding_messages() as $auto_message ) : ?>
+                    <?php $counts = sc_get_message_log_counts( $auto_message['id'] ); ?>
+                    <tr>
+                        <td><?php echo esc_html( $auto_message['text'] ); ?></td>
+                        <td><code><?php echo esc_html( $auto_message['id'] ); ?></code></td>
+                        <td>
+                            <strong><?php echo esc_html( $counts['seen'] ); ?></strong> vistos<br />
+                            <strong><?php echo esc_html( $counts['clicked'] ); ?></strong> clicks
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
 
         <form method="post">
             <?php wp_nonce_field( 'sc_app_messages_nonce', 'sc_app_messages_nonce' ); ?>
