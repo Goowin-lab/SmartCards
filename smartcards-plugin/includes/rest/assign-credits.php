@@ -103,6 +103,19 @@ function sc_generate_invite_token() {
   return $token;
 }
 
+function sc_get_invite_by_token( $token ) {
+  global $wpdb;
+
+  $table = sc_invites_table_name();
+
+  return $wpdb->get_row(
+    $wpdb->prepare(
+      "SELECT * FROM {$table} WHERE token = %s LIMIT 1",
+      $token
+    )
+  );
+}
+
 function sc_get_unique_invited_username( $email ) {
   $local = sanitize_user( current( explode( '@', $email ) ), true );
 
@@ -189,6 +202,23 @@ function sc_update_invite_status( $invite_id, $status, $current_status = null ) 
   );
 }
 
+function sc_send_logged_mail( $email, $subject, $message, $headers = '', $attachments = [] ) {
+  error_log( "SmartCards EMAIL START: {$email}" );
+
+  $start = microtime( true );
+  $sent  = wp_mail( $email, $subject, $message, $headers, $attachments );
+  $time  = microtime( true ) - $start;
+
+  error_log( "SmartCards EMAIL END: {$email}" );
+  error_log( 'SmartCards EMAIL TIME: ' . sprintf( '%.4f', $time ) );
+
+  if ( $time > 1 ) {
+    error_log( "SmartCards EMAIL SMTP WARNING: wp_mail tardó " . sprintf( '%.4f', $time ) . "s para {$email}" );
+  }
+
+  return $sent;
+}
+
 function sc_issue_jwt_for_invited_user( $user_id ) {
   $user_id = (int) $user_id;
 
@@ -258,7 +288,7 @@ function sc_send_credit_invite_email( $email, WP_User $sender, $token ) {
     </div>
   ';
 
-  return wp_mail( $email, $subject, $message, $headers );
+  return sc_send_logged_mail( $email, $subject, $message, $headers );
 }
 
 function sc_assign_credit_rest( WP_REST_Request $request ) {
@@ -311,7 +341,7 @@ Equipo SmartCards
 ";
     $headers = [ 'Content-Type: text/html; charset=UTF-8' ];
 
-    wp_mail( $email, $subject, nl2br( $message ), $headers );
+    sc_send_logged_mail( $email, $subject, nl2br( $message ), $headers );
     error_log( "SmartCards: crédito enviado por email a {$email}" );
 
     $inserted = $wpdb->insert(
@@ -385,8 +415,6 @@ Equipo SmartCards
 }
 
 function sc_redeem_invite_rest( WP_REST_Request $request ) {
-  global $wpdb;
-
   sc_create_invites_table();
 
   $token = sanitize_text_field( $request->get_param( 'token' ) );
@@ -395,13 +423,7 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
     return new WP_Error( 'missing_token', 'Token requerido', [ 'status' => 400 ] );
   }
 
-  $table  = sc_invites_table_name();
-  $invite = $wpdb->get_row(
-    $wpdb->prepare(
-      "SELECT * FROM {$table} WHERE token = %s LIMIT 1",
-      $token
-    )
-  );
+  $invite = sc_get_invite_by_token( $token );
 
   if ( ! $invite ) {
     return new WP_Error( 'invalid_invite', 'Invitación inválida', [ 'status' => 400 ] );
@@ -411,59 +433,87 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
     return new WP_Error( 'invite_used', 'Esta invitación ya fue usada', [ 'status' => 409 ] );
   }
 
+  if ( 'processing' === $invite->status ) {
+    return new WP_Error( 'invite_processing', 'Este enlace ya fue usado o está en proceso', [ 'status' => 409 ] );
+  }
+
   if ( 'pending' !== $invite->status ) {
     return new WP_Error( 'invalid_invite_status', 'Invitación inválida', [ 'status' => 400 ] );
   }
 
-  $email = sanitize_email( $invite->email );
+  $locked = sc_update_invite_status( $invite->id, 'processing', 'pending' );
 
-  if ( ! is_email( $email ) ) {
-    return new WP_Error( 'invalid_invite_email', 'Email inválido en la invitación', [ 'status' => 400 ] );
+  if ( ! $locked ) {
+    return new WP_Error( 'invite_processing', 'Este enlace ya fue usado o está en proceso', [ 'status' => 409 ] );
   }
 
-  $user    = get_user_by( 'email', $email );
-  $created = false;
+  $credit_assigned = false;
+  try {
+    $email = sanitize_email( $invite->email );
 
-  if ( ! $user ) {
-    $user = sc_create_invited_user( $email );
-
-    if ( is_wp_error( $user ) ) {
-      return $user;
+    if ( ! is_email( $email ) ) {
+      sc_update_invite_status( $invite->id, 'pending', 'processing' );
+      return new WP_Error( 'invalid_invite_email', 'Email inválido en la invitación', [ 'status' => 400 ] );
     }
 
-    $created = true;
+    $user    = get_user_by( 'email', $email );
+    $created = false;
+
+    if ( ! $user ) {
+      $user = sc_create_invited_user( $email );
+
+      if ( is_wp_error( $user ) ) {
+        sc_update_invite_status( $invite->id, 'pending', 'processing' );
+        return $user;
+      }
+
+      $created = true;
+    }
+
+    $jwt = sc_issue_jwt_for_invited_user( $user->ID );
+
+    if ( is_wp_error( $jwt ) ) {
+      sc_update_invite_status( $invite->id, 'pending', 'processing' );
+      return $jwt;
+    }
+
+    $credit      = max( 1, (int) $invite->credit );
+    $new_balance = sc_add_credit_balance( $user->ID, $credit );
+    $credit_assigned = true;
+    error_log( "SmartCards: crédito asignado {$user->ID}" );
+
+    $updated = sc_update_invite_status( $invite->id, 'used', 'processing' );
+
+    if ( ! $updated ) {
+      sc_update_invite_status( $invite->id, 'used' );
+      error_log( "SmartCards: no se pudo finalizar invite {$invite->id} tras asignar crédito" );
+
+      return new WP_Error( 'invite_finalize_failed', 'No se pudo finalizar la invitación', [ 'status' => 500 ] );
+    }
+
+    return [
+      'success' => true,
+      'message' => 'Invitación redimida correctamente',
+      'credits' => (int) $new_balance,
+      'created' => (bool) $created,
+      'token'   => $jwt,
+      'user_id' => (int) $user->ID,
+      'user'    => [
+        'id'           => (int) $user->ID,
+        'email'        => $user->user_email,
+        'display_name' => $user->display_name,
+        'name'         => $user->display_name,
+      ],
+    ];
+  } catch ( Throwable $e ) {
+    if ( ! $credit_assigned ) {
+      sc_update_invite_status( $invite->id, 'pending', 'processing' );
+    }
+
+    error_log( 'SmartCards redeem-invite error: ' . $e->getMessage() );
+
+    return new WP_Error( 'redeem_failed', 'No se pudo activar el crédito', [ 'status' => 500 ] );
   }
-
-  $jwt = sc_issue_jwt_for_invited_user( $user->ID );
-
-  if ( is_wp_error( $jwt ) ) {
-    return $jwt;
-  }
-
-  $updated = sc_update_invite_status( $invite->id, 'used', 'pending' );
-
-  if ( ! $updated ) {
-    return new WP_Error( 'invite_used', 'Esta invitación ya fue usada', [ 'status' => 409 ] );
-  }
-
-  $credit      = max( 1, (int) $invite->credit );
-  $new_balance = sc_add_credit_balance( $user->ID, $credit );
-  error_log( "SmartCards: crédito asignado {$user->ID}" );
-
-  return [
-    'success' => true,
-    'message' => 'Invitación redimida correctamente',
-    'credits' => (int) $new_balance,
-    'created' => (bool) $created,
-    'token'   => $jwt,
-    'user_id' => (int) $user->ID,
-    'user'    => [
-      'id'           => (int) $user->ID,
-      'email'        => $user->user_email,
-      'display_name' => $user->display_name,
-      'name'         => $user->display_name,
-    ],
-  ];
 }
 
 add_action(

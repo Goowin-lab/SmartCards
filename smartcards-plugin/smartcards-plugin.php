@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.45
+ * Version: 3.0.46
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -499,6 +499,35 @@ require_once plugin_dir_path(__FILE__) . 'includes/api-credits.php';
 // Endpoint asignar y redimir créditos por invitación
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/assign-credits.php';
 register_activation_hook( __FILE__, 'sc_create_invites_table' );
+
+function sc_configure_smtp_from_constants( $phpmailer ) {
+    if ( ! defined( 'SMARTCARDS_SMTP_HOST' ) || ! SMARTCARDS_SMTP_HOST ) {
+        return;
+    }
+
+    $phpmailer->isSMTP();
+    $phpmailer->Host       = SMARTCARDS_SMTP_HOST;
+    $phpmailer->SMTPAuth   = defined( 'SMARTCARDS_SMTP_AUTH' ) ? (bool) SMARTCARDS_SMTP_AUTH : true;
+    $phpmailer->Port       = defined( 'SMARTCARDS_SMTP_PORT' ) ? (int) SMARTCARDS_SMTP_PORT : 587;
+    $phpmailer->SMTPSecure = defined( 'SMARTCARDS_SMTP_SECURE' ) ? SMARTCARDS_SMTP_SECURE : 'tls';
+
+    if ( defined( 'SMARTCARDS_SMTP_USERNAME' ) ) {
+        $phpmailer->Username = SMARTCARDS_SMTP_USERNAME;
+    }
+
+    if ( defined( 'SMARTCARDS_SMTP_PASSWORD' ) ) {
+        $phpmailer->Password = SMARTCARDS_SMTP_PASSWORD;
+    }
+
+    if ( defined( 'SMARTCARDS_SMTP_FROM' ) ) {
+        $phpmailer->From = SMARTCARDS_SMTP_FROM;
+    }
+
+    if ( defined( 'SMARTCARDS_SMTP_FROM_NAME' ) ) {
+        $phpmailer->FromName = SMARTCARDS_SMTP_FROM_NAME;
+    }
+}
+add_action( 'phpmailer_init', 'sc_configure_smtp_from_constants' );
 
 // Carga el endpoint de Magic Link
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/smartcards-magic.php';
