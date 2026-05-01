@@ -13,28 +13,6 @@ add_action('rest_api_init', function () {
   ]);
 });
 
-function sc_extract_profile_image_from_html($html) {
-  $html = (string) $html;
-
-  if (!$html) {
-    return '';
-  }
-
-  if (preg_match('/<img[^>]+class=["\'][^"\']*\bprofile-image\b[^"\']*["\'][^>]+src=["\']([^"\']+)["\']/i', $html, $matches)) {
-    return html_entity_decode((string) $matches[1], ENT_QUOTES, 'UTF-8');
-  }
-
-  if (preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]+class=["\'][^"\']*\bprofile-image\b[^"\']*["\']/i', $html, $matches)) {
-    return html_entity_decode((string) $matches[1], ENT_QUOTES, 'UTF-8');
-  }
-
-  if (preg_match('/<img[^>]+src=["\']([^"\']*uploads[^"\']+)["\']/i', $html, $matches)) {
-    return html_entity_decode((string) $matches[1], ENT_QUOTES, 'UTF-8');
-  }
-
-  return '';
-}
-
 function sc_get_my_smartcards(WP_REST_Request $request) {
   $user_id = get_current_user_id();
 
@@ -61,31 +39,28 @@ function sc_get_my_smartcards(WP_REST_Request $request) {
       $name = (string) $post->post_title;
     }
 
-    $avatar_url = '';
+    $avatar_url = (string) get_post_meta($post->ID, 'profile_image_final', true);
     $profile_url = get_permalink($post->ID);
 
-    if ($profile_url) {
-      $response = wp_remote_get($profile_url, [
-        'timeout'     => 8,
-        'redirection' => 3,
-      ]);
-
-      if (!is_wp_error($response)) {
-        $html = wp_remote_retrieve_body($response);
-        $avatar_url = sc_extract_profile_image_from_html($html);
+    if (!$avatar_url) {
+      if (has_post_thumbnail($post->ID)) {
+        $avatar_url = (string) get_the_post_thumbnail_url($post->ID, 'full');
+        if ($avatar_url) {
+          update_post_meta($post->ID, 'profile_image_final', $avatar_url);
+        }
       }
-    }
 
-    if ($avatar_url && strpos($avatar_url, 'logo') !== false) {
-      $avatar_url = '';
+      if (!$avatar_url) {
+        $avatar_url = (string) get_post_meta($post->ID, 'profile_picture', true);
+
+        if ($avatar_url) {
+          update_post_meta($post->ID, 'profile_image_final', $avatar_url);
+        }
+      }
     }
 
     if ($avatar_url && strpos($avatar_url, 'http') !== 0) {
       $avatar_url = (string) site_url($avatar_url);
-    }
-
-    if (!$avatar_url) {
-      $avatar_url = '';
     }
 
     $cards[] = [
