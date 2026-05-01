@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.43
+ * Version: 3.0.45
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -502,6 +502,79 @@ register_activation_hook( __FILE__, 'sc_create_invites_table' );
 
 // Carga el endpoint de Magic Link
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/smartcards-magic.php';
+
+function sc_render_magic_link_redirect() {
+    $path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : '';
+    $path = trim( $path, '/' );
+
+    if ( 'magic' !== $path ) {
+        return;
+    }
+
+    status_header( 200 );
+    nocache_headers();
+    ?>
+    <!doctype html>
+    <html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>SmartCards</title>
+        <style>
+            body {
+                align-items: center;
+                background: #f8fafc;
+                color: #111827;
+                display: flex;
+                font-family: Arial, sans-serif;
+                justify-content: center;
+                margin: 0;
+                min-height: 100vh;
+                padding: 24px;
+                text-align: center;
+            }
+            main {
+                max-width: 420px;
+            }
+            button {
+                background: #01a350;
+                border: 0;
+                border-radius: 10px;
+                color: #fff;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: 700;
+                margin-top: 16px;
+                padding: 12px 18px;
+            }
+            p {
+                color: #4b5563;
+                line-height: 1.5;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>Abriendo SmartCards</h1>
+            <p>Estamos activando tu crédito en la app.</p>
+            <button type="button" id="open-smartcards">Abrir app</button>
+        </main>
+        <script>
+            (function () {
+                function openApp() {
+                    window.location.href = 'smartcards://magic' + window.location.search;
+                }
+
+                document.getElementById('open-smartcards').addEventListener('click', openApp);
+                openApp();
+            }());
+        </script>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+add_action( 'template_redirect', 'sc_render_magic_link_redirect', 0 );
 
 // Custom Post Type: Smart Card
 // Define la estructura, visibilidad pública y rutas (/card/slug)

@@ -46,6 +46,7 @@ function sc_add_credit_balance( $user_id, $credit = 1 ) {
 
   update_user_meta( $user_id, 'smartcards_credits', $next );
   update_user_meta( $user_id, 'smartcards_credits_updated', current_time( 'mysql' ) );
+  update_user_meta( $user_id, 'smartcards_credits_updated_at', time() );
 
   return $next;
 }
@@ -121,10 +122,32 @@ function sc_get_unique_invited_username( $email ) {
   return $username;
 }
 
+function sc_grant_welcome_bonus_once( $user_id ) {
+  $user_id = (int) $user_id;
+
+  if ( get_user_meta( $user_id, 'welcome_bonus_given', true ) ) {
+    return sc_get_credit_balance( $user_id );
+  }
+
+  $next = sc_get_credit_balance( $user_id ) + 1;
+
+  update_user_meta( $user_id, 'smartcards_credits', $next );
+  update_user_meta( $user_id, 'welcome_bonus_given', 1 );
+  update_user_meta( $user_id, 'smartcards_credits_updated', current_time( 'mysql' ) );
+  update_user_meta( $user_id, 'smartcards_credits_updated_at', time() );
+
+  return $next;
+}
+
 function sc_create_invited_user( $email ) {
-  $username = sc_get_unique_invited_username( $email );
-  $password = wp_generate_password( 24, true, true );
+  $username = $email;
+  $password = wp_generate_password( 20, true, true );
   $user_id  = wp_create_user( $username, $password, $email );
+
+  if ( is_wp_error( $user_id ) && in_array( $user_id->get_error_code(), [ 'existing_user_login', 'invalid_username' ], true ) ) {
+    $username = sc_get_unique_invited_username( $email );
+    $user_id  = wp_create_user( $username, $password, $email );
+  }
 
   if ( is_wp_error( $user_id ) ) {
     return $user_id;
@@ -139,10 +162,31 @@ function sc_create_invited_user( $email ) {
     ]
   );
 
-  update_user_meta( $user_id, 'smartcards_credits', 0 );
-  update_user_meta( $user_id, 'smartcards_credits_updated', current_time( 'mysql' ) );
+  sc_grant_welcome_bonus_once( $user_id );
+  error_log( "SmartCards: usuario creado automático {$email}" );
 
   return get_user_by( 'id', $user_id );
+}
+
+function sc_update_invite_status( $invite_id, $status, $current_status = null ) {
+  global $wpdb;
+
+  $table = sc_invites_table_name();
+  $where = [ 'id' => (int) $invite_id ];
+  $where_format = [ '%d' ];
+
+  if ( null !== $current_status ) {
+    $where['status'] = (string) $current_status;
+    $where_format[]  = '%s';
+  }
+
+  return $wpdb->update(
+    $table,
+    [ 'status' => (string) $status ],
+    $where,
+    [ '%s' ],
+    $where_format
+  );
 }
 
 function sc_issue_jwt_for_invited_user( $user_id ) {
@@ -363,8 +407,12 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
     return new WP_Error( 'invalid_invite', 'Invitación inválida', [ 'status' => 400 ] );
   }
 
-  if ( 'pending' !== $invite->status ) {
+  if ( 'used' === $invite->status ) {
     return new WP_Error( 'invite_used', 'Esta invitación ya fue usada', [ 'status' => 409 ] );
+  }
+
+  if ( 'pending' !== $invite->status ) {
+    return new WP_Error( 'invalid_invite_status', 'Invitación inválida', [ 'status' => 400 ] );
   }
 
   $email = sanitize_email( $invite->email );
@@ -386,16 +434,13 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
     $created = true;
   }
 
-  $updated = $wpdb->update(
-    $table,
-    [ 'status' => 'used' ],
-    [
-      'id'     => (int) $invite->id,
-      'status' => 'pending',
-    ],
-    [ '%s' ],
-    [ '%d', '%s' ]
-  );
+  $jwt = sc_issue_jwt_for_invited_user( $user->ID );
+
+  if ( is_wp_error( $jwt ) ) {
+    return $jwt;
+  }
+
+  $updated = sc_update_invite_status( $invite->id, 'used', 'pending' );
 
   if ( ! $updated ) {
     return new WP_Error( 'invite_used', 'Esta invitación ya fue usada', [ 'status' => 409 ] );
@@ -403,11 +448,7 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
 
   $credit      = max( 1, (int) $invite->credit );
   $new_balance = sc_add_credit_balance( $user->ID, $credit );
-  $jwt         = sc_issue_jwt_for_invited_user( $user->ID );
-
-  if ( is_wp_error( $jwt ) ) {
-    return $jwt;
-  }
+  error_log( "SmartCards: crédito asignado {$user->ID}" );
 
   return [
     'success' => true,
@@ -415,6 +456,7 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
     'credits' => (int) $new_balance,
     'created' => (bool) $created,
     'token'   => $jwt,
+    'user_id' => (int) $user->ID,
     'user'    => [
       'id'           => (int) $user->ID,
       'email'        => $user->user_email,
