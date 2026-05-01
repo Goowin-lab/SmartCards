@@ -496,6 +496,10 @@ require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/create-card.php';
 // Cargar API de créditos SmartCards
 require_once plugin_dir_path(__FILE__) . 'includes/api-credits.php';
 
+// Endpoint asignar y redimir créditos por invitación
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/assign-credits.php';
+register_activation_hook( __FILE__, 'sc_create_invites_table' );
+
 // Carga el endpoint de Magic Link
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/smartcards-magic.php';
 
