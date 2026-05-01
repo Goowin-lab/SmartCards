@@ -33,12 +33,19 @@ function sc_get_my_smartcards(WP_REST_Request $request) {
   $cards = [];
 
   foreach ($query->posts as $post) {
+    $status = $post->post_status === 'publish' ? 'published' : 'draft';
+    $name = trim((string) get_post_meta($post->ID, 'firstName', true) . ' ' . (string) get_post_meta($post->ID, 'lastName', true));
+    if (!$name) {
+      $name = (string) $post->post_title;
+    }
+
     $cards[] = [
       'id'         => (int) $post->ID,
+      'name'       => $name,
       'title'      => (string) $post->post_title,
       'slug'       => (string) $post->post_name,
       'permalink'  => get_permalink($post->ID),
-      'status'     => (string) $post->post_status,
+      'status'     => $status,
       'created_at' => (string) $post->post_date,
     ];
   }

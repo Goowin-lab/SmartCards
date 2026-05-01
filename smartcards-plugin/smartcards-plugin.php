@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.37
+ * Version: 3.0.38
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -513,6 +513,12 @@ require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/publish-card.php';
 
 // Endpoint listar Smart Cards del usuario
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/my-cards.php';
+
+// Endpoint eliminar Smart Card completa
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/delete-card.php';
+
+// Endpoint analíticas de Smart Card
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/card-analytics.php';
 
 // Endpoint marcar que el usuario compartió una Smart Card
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/mark-shared.php';
@@ -1106,11 +1112,15 @@ function sc_track_event_ajax() {
   }
 
   $profile_post = get_post( $profile_id );
-  if ( ! $profile_post || 'page' !== $profile_post->post_type ) {
+  if ( ! $profile_post || ! in_array( $profile_post->post_type, [ 'page', 'smartcards' ], true ) ) {
     wp_send_json_error( [ 'message' => 'profile_id inválido.' ], 400 );
   }
 
   $owner_user_id = (int) get_post_meta( $profile_id, 'sc_owner_user_id', true );
+  if ( $owner_user_id <= 0 && 'smartcards' === $profile_post->post_type ) {
+    $owner_user_id = (int) $profile_post->post_author;
+    update_post_meta( $profile_id, 'sc_owner_user_id', $owner_user_id );
+  }
   if ( $owner_user_id <= 0 ) {
     wp_send_json_error( [ 'message' => 'Owner no encontrado.' ], 400 );
   }
@@ -2650,9 +2660,12 @@ add_action('rest_api_init', function () {
 /**
  * Endpoint: /wp-json/smartcards/v1/my-cards
  * Devuelve las Smart Cards del usuario logueado
- * Fuente REAL: user_meta smartcards_perfiles_urls
+ * Compatibilidad legacy: delega al endpoint modular basado en posts.
  */
 function sc_get_my_cards(WP_REST_Request $request) {
+    if (function_exists('sc_get_my_smartcards')) {
+        return sc_get_my_smartcards($request);
+    }
 
     $user_id = get_current_user_id();
 

@@ -523,6 +523,7 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
 
   update_post_meta($smartcard_id, 'sc_vcf_attachment_id', (int) $vcf_attachment_id);
   update_post_meta($smartcard_id, 'sc_vcf_url', $vcf_url);
+  update_post_meta($smartcard_id, 'sc_vcf_path', $vcf_file);
 
   $profile_styles = sc_get_profile_style_settings($smartcard_id, $theme);
   $user_color = $profile_styles['primary_color'];
@@ -634,6 +635,7 @@ function sc_publish_smartcard_rest(WP_REST_Request $request) {
   update_post_meta($smartcard_id, 'sc_public_url', $permalink);
   update_post_meta($smartcard_id, 'sc_source', 'app');
   update_post_meta($smartcard_id, 'sc_theme', $theme);
+  update_post_meta($smartcard_id, 'sc_owner_user_id', $user_id);
 
   $new_balance = $credits - $total_cost;
   update_user_meta($user_id, 'smartcards_credits', $new_balance);
