@@ -247,6 +247,28 @@ function sc_assign_credit_rest( WP_REST_Request $request ) {
 
   if ( $target ) {
     $recipient_balance = sc_add_credit_balance( $target->ID, $credit );
+    $email             = $target->user_email;
+    $name              = $target->display_name;
+
+    $subject = '🎉 Has recibido un crédito en SmartCards';
+    $message = "
+Hola {$name},
+
+Te han asignado un crédito en SmartCards 🚀
+
+Ya puedes crear una nueva Smart Card desde tu cuenta.
+
+👉 Ingresa aquí:
+https://app.smartcards.com.co
+
+¡Aprovecha tu crédito ahora!
+
+Equipo SmartCards
+";
+    $headers = [ 'Content-Type: text/html; charset=UTF-8' ];
+
+    wp_mail( $email, $subject, nl2br( $message ), $headers );
+    error_log( "SmartCards: crédito enviado por email a {$email}" );
 
     $inserted = $wpdb->insert(
       $table,
