@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.32
+ * Version: 3.0.33
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -487,6 +487,9 @@ require_once SMARTCARDS_PLUGIN_DIR . 'includes/otp-endpoints.php';
 // Endpoint /smartcards/v1/me — devuelve datos del usuario autenticado via JWT
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest-me.php';
 
+// Endpoint /smartcards/v1/messages y panel "Mensajes App"
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/app-messages.php';
+
 // Endpoint /smartcards/v1/create-card - crear Smart Card
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/create-card.php';
 
@@ -738,16 +741,17 @@ function smartcards_enqueue_scripts() {
 
 
 // ======================================================
-// Ya NO asignamos crédito al registro de usuario
+// Crédito gratis inicial al registrar usuario
 // ======================================================
 
-// Desactivamos esta función para que NO sume créditos al registrarse:
-/*
-function asignar_creditos_nuevo_usuario( $user_id ) {
-    update_user_meta( $user_id, 'smartcards_credits', 1 );
+function sc_regalo_credito_inicial( $user_id ) {
+    $credits = get_user_meta( $user_id, 'smartcards_credits', true );
+
+    if ( ! $credits ) {
+        update_user_meta( $user_id, 'smartcards_credits', 1 );
+    }
 }
-add_action( 'user_register', 'asignar_creditos_nuevo_usuario' );
-*/
+add_action( 'user_register', 'sc_regalo_credito_inicial' );
 
 // ======================================================
 // Función que sí asigna créditos cuando el pedido se completa
@@ -784,12 +788,12 @@ function smartcards_registro_personalizado_wpforms($user_id, $fields, $form_data
                 $datos_codigo_credito['usos_actuales']++;
                 update_option('smart_codigo_credito_' . $codigo_credito_ingresado, $datos_codigo_credito);
             } else {
-                // Si el código llegó al límite, asignar 0 créditos o manejar como prefieras
-                update_user_meta($user_id, 'smartcards_credits', 0);
+                // Si el código llegó al límite, conserva el crédito gratis inicial.
+                sc_regalo_credito_inicial($user_id);
             }
         } else {
-            // Código no válido, asignar 0 créditos
-            update_user_meta($user_id, 'smartcards_credits', 0);
+            // Código no válido: conserva el crédito gratis inicial.
+            sc_regalo_credito_inicial($user_id);
         }
     }
 }
@@ -1470,7 +1474,7 @@ function smartcards_mostrar_productos_externos() {
 }
 
 // ——————————————————————————————————————————————
-// 1) Desactivar créditos al registrarse en la App
+// 1) Mantener desactivada la función antigua de créditos al registrarse
 // ——————————————————————————————————————————————
 add_action( 'init', function() {
     remove_action( 'user_register', 'asignar_creditos_nuevo_usuario' );
