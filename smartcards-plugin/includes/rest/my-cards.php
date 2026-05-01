@@ -69,6 +69,7 @@ function sc_get_my_smartcards(WP_REST_Request $request) {
       'title'      => (string) $post->post_title,
       'slug'       => (string) $post->post_name,
       'permalink'  => $profile_url,
+      'public_url' => $profile_url,
       'status'     => $status,
       'avatar'     => $avatar_url,
       'created_at' => (string) $post->post_date,
