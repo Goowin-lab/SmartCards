@@ -137,17 +137,27 @@ function sc_get_unique_invited_username( $email ) {
 
 function sc_grant_welcome_bonus_once( $user_id ) {
   $user_id = (int) $user_id;
+  error_log( "SC DEBUG BEFORE: user {$user_id} credits = " . get_user_meta( $user_id, 'smartcards_credits', true ) );
 
-  if ( get_user_meta( $user_id, 'welcome_bonus_given', true ) ) {
+  $already_bonus = get_user_meta( $user_id, 'welcome_bonus_given', true );
+  error_log( 'SC DEBUG WELCOME FLAG: ' . $already_bonus );
+
+  if ( $already_bonus ) {
+    error_log( "SC BONUS SKIPPED user {$user_id}" );
+    error_log( "SC DEBUG AFTER BONUS: user {$user_id} credits = " . get_user_meta( $user_id, 'smartcards_credits', true ) );
     return sc_get_credit_balance( $user_id );
   }
 
-  $next = sc_get_credit_balance( $user_id ) + 1;
+  $credits = (int) get_user_meta( $user_id, 'smartcards_credits', true );
+  $next    = $credits + 1;
 
   update_user_meta( $user_id, 'smartcards_credits', $next );
   update_user_meta( $user_id, 'welcome_bonus_given', 1 );
   update_user_meta( $user_id, 'smartcards_credits_updated', current_time( 'mysql' ) );
   update_user_meta( $user_id, 'smartcards_credits_updated_at', time() );
+
+  error_log( "SC BONUS APPLIED user {$user_id}" );
+  error_log( "SC DEBUG AFTER BONUS: user {$user_id} credits = " . get_user_meta( $user_id, 'smartcards_credits', true ) );
 
   return $next;
 }
@@ -155,11 +165,22 @@ function sc_grant_welcome_bonus_once( $user_id ) {
 function sc_create_invited_user( $email ) {
   $username = $email;
   $password = wp_generate_password( 20, true, true );
+
+  $initial_credit_priority = has_action( 'user_register', 'sc_regalo_credito_inicial' );
+
+  if ( false !== $initial_credit_priority ) {
+    remove_action( 'user_register', 'sc_regalo_credito_inicial', $initial_credit_priority );
+  }
+
   $user_id  = wp_create_user( $username, $password, $email );
 
   if ( is_wp_error( $user_id ) && in_array( $user_id->get_error_code(), [ 'existing_user_login', 'invalid_username' ], true ) ) {
     $username = sc_get_unique_invited_username( $email );
     $user_id  = wp_create_user( $username, $password, $email );
+  }
+
+  if ( false !== $initial_credit_priority ) {
+    add_action( 'user_register', 'sc_regalo_credito_inicial', $initial_credit_priority );
   }
 
   if ( is_wp_error( $user_id ) ) {
@@ -175,7 +196,6 @@ function sc_create_invited_user( $email ) {
     ]
   );
 
-  sc_grant_welcome_bonus_once( $user_id );
   error_log( "SmartCards: usuario creado automático {$email}" );
 
   return get_user_by( 'id', $user_id );
@@ -200,6 +220,28 @@ function sc_update_invite_status( $invite_id, $status, $current_status = null ) 
     [ '%s' ],
     $where_format
   );
+}
+
+function sc_apply_invite_credit_once( $user_id, $invite ) {
+  $user_id = (int) $user_id;
+
+  if ( ! $invite || 'processing' !== $invite->status ) {
+    return new WP_Error( 'invalid_invite_credit', 'Invite no válido para crédito', [ 'status' => 409 ] );
+  }
+
+  error_log( "SC DEBUG BEFORE: user {$user_id} credits = " . get_user_meta( $user_id, 'smartcards_credits', true ) );
+
+  $credits = (int) get_user_meta( $user_id, 'smartcards_credits', true );
+  $next    = $credits + 1;
+
+  update_user_meta( $user_id, 'smartcards_credits', $next );
+  update_user_meta( $user_id, 'smartcards_credits_updated', current_time( 'mysql' ) );
+  update_user_meta( $user_id, 'smartcards_credits_updated_at', time() );
+
+  error_log( "SC INVITE CREDIT APPLIED user {$user_id}" );
+  error_log( "SC DEBUG AFTER INVITE: user {$user_id} credits = " . get_user_meta( $user_id, 'smartcards_credits', true ) );
+
+  return $next;
 }
 
 function sc_send_logged_mail( $email, $subject, $message, $headers = '', $attachments = [] ) {
@@ -447,6 +489,7 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
     return new WP_Error( 'invite_processing', 'Este enlace ya fue usado o está en proceso', [ 'status' => 409 ] );
   }
 
+  $invite->status = 'processing';
   $credit_assigned = false;
   try {
     $email = sanitize_email( $invite->email );
@@ -470,6 +513,15 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
       $created = true;
     }
 
+    $user_id = (int) $user->ID;
+
+    if ( $created ) {
+      sc_grant_welcome_bonus_once( $user_id );
+    } else {
+      error_log( 'SC DEBUG WELCOME FLAG: ' . get_user_meta( $user_id, 'welcome_bonus_given', true ) );
+      error_log( "SC BONUS SKIPPED user {$user_id}" );
+    }
+
     $jwt = sc_issue_jwt_for_invited_user( $user->ID );
 
     if ( is_wp_error( $jwt ) ) {
@@ -477,10 +529,15 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
       return $jwt;
     }
 
-    $credit      = max( 1, (int) $invite->credit );
-    $new_balance = sc_add_credit_balance( $user->ID, $credit );
+    $new_balance = sc_apply_invite_credit_once( $user_id, $invite );
+
+    if ( is_wp_error( $new_balance ) ) {
+      sc_update_invite_status( $invite->id, 'pending', 'processing' );
+      return $new_balance;
+    }
+
     $credit_assigned = true;
-    error_log( "SmartCards: crédito asignado {$user->ID}" );
+    error_log( "SmartCards: crédito asignado {$user_id}" );
 
     $updated = sc_update_invite_status( $invite->id, 'used', 'processing' );
 
@@ -490,6 +547,8 @@ function sc_redeem_invite_rest( WP_REST_Request $request ) {
 
       return new WP_Error( 'invite_finalize_failed', 'No se pudo finalizar la invitación', [ 'status' => 500 ] );
     }
+
+    error_log( "SC FINAL CREDITS user {$user_id} = " . get_user_meta( $user_id, 'smartcards_credits', true ) );
 
     return [
       'success' => true,
