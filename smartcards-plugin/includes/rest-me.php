@@ -33,6 +33,7 @@ class SC_REST_Me {
 
     // Créditos del usuario
     $credits = (int) get_user_meta( $user->ID, 'smartcards_credits', true );
+    $qr_logo_enabled = (bool) get_user_meta( $user->ID, 'qr_logo_enabled', true );
     $has_shared = (bool) get_user_meta( $user->ID, 'sc_has_shared', true );
     $latest_profile_id = self::get_latest_profile_id( $user->ID );
     $has_legacy_profile = self::user_has_legacy_profile( $user->ID );
@@ -47,6 +48,7 @@ class SC_REST_Me {
         'display_name' => $user->display_name,
         'name'         => $user->display_name,
         'credits'      => $credits,
+        'qr_logo_enabled' => $qr_logo_enabled,
         'has_profile'  => $has_profile,
         'profile_complete' => $profile_complete,
         'has_shared' => $has_shared,

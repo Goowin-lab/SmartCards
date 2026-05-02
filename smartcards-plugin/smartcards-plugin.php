@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.50
+ * Version: 3.0.51
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -764,11 +764,77 @@ readfile($file_path);
 exit;
 });
 
+if ( ! function_exists( 'sc_get_smartcard_profile_image_url' ) ) {
+    function sc_get_smartcard_profile_image_url( $profile_id ) {
+        $profile_id = (int) $profile_id;
+
+        if ( $profile_id <= 0 ) {
+            return '';
+        }
+
+        $profile_image = (string) get_post_meta( $profile_id, 'profile_image_final', true );
+
+        if ( ! $profile_image && has_post_thumbnail( $profile_id ) ) {
+            $profile_image = (string) get_the_post_thumbnail_url( $profile_id, 'full' );
+        }
+
+        if ( ! $profile_image ) {
+            $profile_image = (string) get_post_meta( $profile_id, 'profile_picture', true );
+        }
+
+        if ( $profile_image && strpos( $profile_image, 'http' ) !== 0 ) {
+            $profile_image = (string) site_url( $profile_image );
+        }
+
+        return esc_url_raw( $profile_image );
+    }
+}
+
+if ( ! function_exists( 'sc_get_latest_smartcard_profile_id_for_user' ) ) {
+    function sc_get_latest_smartcard_profile_id_for_user( $user_id ) {
+        $query = new WP_Query([
+            'post_type'      => 'smartcards',
+            'post_status'    => [ 'publish', 'draft' ],
+            'author'         => (int) $user_id,
+            'posts_per_page' => 1,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        ]);
+
+        return ! empty( $query->posts ) ? (int) $query->posts[0] : 0;
+    }
+}
+
+if ( ! function_exists( 'sc_get_frontend_qr_context' ) ) {
+    function sc_get_frontend_qr_context( $fallback_user_id = 0 ) {
+        $profile_id = 0;
+        $owner_id   = (int) $fallback_user_id;
+        $queried    = get_queried_object();
+
+        if ( $queried instanceof WP_Post && 'smartcards' === $queried->post_type ) {
+            $profile_id = (int) $queried->ID;
+            $owner_id   = (int) $queried->post_author;
+        } elseif ( $owner_id > 0 ) {
+            $profile_id = sc_get_latest_smartcard_profile_id_for_user( $owner_id );
+        }
+
+        return [
+            'profile_owner_id' => $owner_id,
+            'qr_logo_enabled'  => $owner_id > 0 ? (bool) get_user_meta( $owner_id, 'qr_logo_enabled', true ) : false,
+            'profile_image'    => sc_get_smartcard_profile_image_url( $profile_id ),
+        ];
+    }
+}
+
 // Cargar estilos y scripts
 function smartcards_enqueue_assets() {
     $smartcards_styles_path = SMARTCARDS_PLUGIN_DIR . 'includes/assets/css/smartcards-styles.css';
     $smartcards_styles_version = file_exists($smartcards_styles_path) ? filemtime($smartcards_styles_path) : '1.0';
     wp_enqueue_style('smartcards-styles', SMARTCARDS_PLUGIN_URL . 'includes/assets/css/smartcards-styles.css', [], $smartcards_styles_version);
+    $smartcards_frontend_path = SMARTCARDS_PLUGIN_DIR . 'includes/assets/js/smartcards-frontend.js';
+    $smartcards_frontend_version = file_exists($smartcards_frontend_path) ? filemtime($smartcards_frontend_path) : '1.0';
 
     // Scripts QR y frontend
     wp_enqueue_script(
@@ -783,7 +849,7 @@ function smartcards_enqueue_assets() {
         'smartcards-frontend',
         SMARTCARDS_PLUGIN_URL . 'includes/assets/js/smartcards-frontend.js',
         ['qr-code-styling'],
-        '1.0',
+        $smartcards_frontend_version,
         true
     );
     // ---- Datos del usuario para OneSignal (External ID + Tags) ----
@@ -806,6 +872,7 @@ function smartcards_enqueue_assets() {
   // Estado del perfil (ajústalo a tu flujo)
   $profile_status = get_user_meta($uid, 'sc_profile_status', true);
   if (!$profile_status) { $profile_status = 'pending'; } // pending | approved | created
+  $qr_context = sc_get_frontend_qr_context($uid);
 
   // Pasa datos al JS del front
   wp_localize_script('smartcards-frontend', 'smartcardsUser', [
@@ -814,6 +881,9 @@ function smartcards_enqueue_assets() {
     'country'        => $country,            // ej. CO, MX, US
     'lang'           => strtolower($lang),   // ej. es, en
     'profile_status' => $profile_status,
+    'profile_owner_id' => $qr_context['profile_owner_id'],
+    'qr_logo_enabled'  => $qr_context['qr_logo_enabled'],
+    'profile_image'    => $qr_context['profile_image'],
   ]);
 }
 

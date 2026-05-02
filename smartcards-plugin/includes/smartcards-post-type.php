@@ -289,6 +289,12 @@ if (!function_exists('sc_register_improvements_rest_route')) {
       'callback'            => 'sc_vote_improvement',
       'permission_callback' => '__return_true',
     ]);
+
+    register_rest_route('smartcards/v1', '/activate-improvement', [
+      'methods'             => WP_REST_Server::CREATABLE,
+      'callback'            => 'sc_activate_improvement',
+      'permission_callback' => '__return_true',
+    ]);
   }
 }
 
@@ -447,6 +453,62 @@ if (!function_exists('sc_vote_improvement')) {
       'id'      => $post_id,
       'votes'   => $votes,
       'voted'   => true,
+    ]);
+  }
+}
+
+if (!function_exists('sc_activate_improvement')) {
+  function sc_activate_improvement(WP_REST_Request $request) {
+    $user_id = get_current_user_id();
+
+    if (!$user_id) {
+      return new WP_Error(
+        'smartcards_unauthorized',
+        'Debes iniciar sesión para activar esta mejora.',
+        ['status' => 401]
+      );
+    }
+
+    $improvement = sanitize_key((string) $request->get_param('improvement'));
+
+    if ($improvement !== 'qr_logo') {
+      return new WP_Error(
+        'smartcards_invalid_improvement',
+        'Mejora no disponible.',
+        ['status' => 400]
+      );
+    }
+
+    $qr_logo_enabled = (bool) get_user_meta($user_id, 'qr_logo_enabled', true);
+    $credits = (int) get_user_meta($user_id, 'smartcards_credits', true);
+
+    if ($qr_logo_enabled) {
+      return rest_ensure_response([
+        'success'         => true,
+        'qr_logo_enabled' => true,
+        'credits'         => $credits,
+      ]);
+    }
+
+    if ($credits < 1) {
+      return new WP_Error(
+        'smartcards_no_credits',
+        'No tienes créditos suficientes para activar esta mejora.',
+        ['status' => 400]
+      );
+    }
+
+    $new_credits = max(0, $credits - 1);
+
+    update_user_meta($user_id, 'smartcards_credits', $new_credits);
+    update_user_meta($user_id, 'smartcards_credits_updated', current_time('mysql'));
+    update_user_meta($user_id, 'smartcards_credits_updated_at', time());
+    update_user_meta($user_id, 'qr_logo_enabled', true);
+
+    return rest_ensure_response([
+      'success'         => true,
+      'qr_logo_enabled' => true,
+      'credits'         => $new_credits,
     ]);
   }
 }

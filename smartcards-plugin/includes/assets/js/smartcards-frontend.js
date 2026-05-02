@@ -709,12 +709,17 @@ function initQRCodeOnPublicProfile() {
 
 // Función que genera el QR estilizado con logo
 function generarQR(urlPerfil) {
+  const userLogoEnabled = window.smartcardsUser?.qr_logo_enabled;
+  const logo = userLogoEnabled
+    ? window.smartcardsUser?.profile_image ||
+      "https://app.smartcards.com.co/default-logo.png"
+    : "https://app.smartcards.com.co/wp-content/uploads/2025/03/fav-smartcard.svg";
+
   const qrCode = new QRCodeStyling({
     width: 270,
     height: 270,
     data: urlPerfil,
-    image:
-      "https://app.smartcards.com.co/wp-content/uploads/2025/03/fav-smartcard.svg",
+    image: logo,
     dots: {
       color: "#000000", // QR negro
       type: "classy-rounded", // estilo QR tradicional. Puedes usar: square, dots, rounded, extra-rounded, classy, classy-rounded
