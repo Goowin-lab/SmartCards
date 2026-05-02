@@ -89,6 +89,30 @@ if (!function_exists('sc_sanitize_improvement_status')) {
   }
 }
 
+if (!function_exists('sc_normalize_improvement_user_votes')) {
+  function sc_normalize_improvement_user_votes($votes) {
+    if (is_string($votes)) {
+      $decoded_votes = json_decode($votes, true);
+      $votes = is_array($decoded_votes) ? $decoded_votes : explode(',', $votes);
+    }
+
+    if (!is_array($votes)) {
+      return [];
+    }
+
+    $user_ids = [];
+    foreach ($votes as $user_id) {
+      $user_id = absint($user_id);
+
+      if ($user_id > 0) {
+        $user_ids[] = $user_id;
+      }
+    }
+
+    return array_values(array_unique($user_ids));
+  }
+}
+
 if (!function_exists('sc_register_improvement_meta')) {
   function sc_register_improvement_meta() {
     register_post_meta('sc_improvement', 'status', [
@@ -127,6 +151,29 @@ if (!function_exists('sc_register_improvement_meta')) {
       'sanitize_callback' => 'sanitize_textarea_field',
       'show_in_rest'      => true,
     ]);
+
+    register_post_meta('sc_improvement', 'votes', [
+      'single'            => true,
+      'type'              => 'integer',
+      'default'           => 0,
+      'sanitize_callback' => 'absint',
+      'show_in_rest'      => true,
+    ]);
+
+    register_post_meta('sc_improvement', 'user_votes', [
+      'single'            => true,
+      'type'              => 'array',
+      'default'           => [],
+      'sanitize_callback' => 'sc_normalize_improvement_user_votes',
+      'show_in_rest'      => [
+        'schema' => [
+          'type'  => 'array',
+          'items' => [
+            'type' => 'integer',
+          ],
+        ],
+      ],
+    ]);
   }
 }
 
@@ -159,8 +206,8 @@ if (!function_exists('sc_render_improvement_metabox')) {
     <p>
       <label for="sc_improvement_status"><strong>Estado</strong></label><br>
       <select id="sc_improvement_status" name="sc_improvement_status">
-        <option value="active" <?php selected($status, 'active'); ?>>Active</option>
-        <option value="coming" <?php selected($status, 'coming'); ?>>Coming</option>
+        <option value="active" <?php selected($status, 'active'); ?>>Activo</option>
+        <option value="coming" <?php selected($status, 'coming'); ?>>Próximamente</option>
       </select>
     </p>
 
@@ -230,13 +277,30 @@ if (!function_exists('sc_register_improvements_rest_route')) {
       'callback'            => 'sc_get_improvements',
       'permission_callback' => '__return_true',
     ]);
+
+    register_rest_route('smartcards/v1', '/suggest-improvement', [
+      'methods'             => WP_REST_Server::CREATABLE,
+      'callback'            => 'sc_suggest_improvement',
+      'permission_callback' => '__return_true',
+    ]);
+
+    register_rest_route('smartcards/v1', '/vote-improvement', [
+      'methods'             => WP_REST_Server::CREATABLE,
+      'callback'            => 'sc_vote_improvement',
+      'permission_callback' => '__return_true',
+    ]);
   }
 }
 
 add_action('rest_api_init', 'sc_register_improvements_rest_route');
 
 if (!function_exists('sc_get_improvements')) {
-  function sc_get_improvements() {
+  function sc_get_improvements($request = null) {
+    $viewer_id = 0;
+    if ($request instanceof WP_REST_Request) {
+      $viewer_id = absint($request->get_param('user_id'));
+    }
+
     $posts = get_posts([
       'post_type'      => 'sc_improvement',
       'post_status'    => 'publish',
@@ -245,8 +309,10 @@ if (!function_exists('sc_get_improvements')) {
       'order'          => 'ASC',
     ]);
 
-    $improvements = array_map(function ($post) {
+    $improvements = array_map(function ($post) use ($viewer_id) {
       $status = sc_sanitize_improvement_status(get_post_meta($post->ID, 'status', true));
+      $votes = absint(get_post_meta($post->ID, 'votes', true));
+      $user_votes = sc_normalize_improvement_user_votes(get_post_meta($post->ID, 'user_votes', true));
 
       return [
         'id'          => (int) $post->ID,
@@ -255,6 +321,8 @@ if (!function_exists('sc_get_improvements')) {
         'days'        => absint(get_post_meta($post->ID, 'days', true)),
         'credits'     => absint(get_post_meta($post->ID, 'credits', true)),
         'description' => (string) get_post_meta($post->ID, 'description', true),
+        'votes'       => $votes,
+        'voted'       => $viewer_id > 0 && in_array($viewer_id, $user_votes, true),
       ];
     }, $posts);
 
@@ -268,6 +336,10 @@ if (!function_exists('sc_get_improvements')) {
       $status_b = $order[$b['status']] ?? 99;
 
       if ($status_a === $status_b) {
+        if ($a['votes'] !== $b['votes']) {
+          return $b['votes'] <=> $a['votes'];
+        }
+
         return strcasecmp($a['title'], $b['title']);
       }
 
@@ -277,3 +349,163 @@ if (!function_exists('sc_get_improvements')) {
     return rest_ensure_response($improvements);
   }
 }
+
+if (!function_exists('sc_suggest_improvement')) {
+  function sc_suggest_improvement(WP_REST_Request $request) {
+    $idea = sanitize_text_field((string) $request->get_param('idea'));
+
+    if ($idea === '') {
+      return new WP_Error(
+        'smartcards_empty_idea',
+        'La idea no puede estar vacía.',
+        ['status' => 400]
+      );
+    }
+
+    $post_id = wp_insert_post([
+      'post_type'   => 'sc_improvement',
+      'post_status' => 'draft',
+      'post_title'  => $idea,
+    ], true);
+
+    if (is_wp_error($post_id)) {
+      return $post_id;
+    }
+
+    update_post_meta($post_id, 'status', 'coming');
+    update_post_meta($post_id, 'days', 0);
+    update_post_meta($post_id, 'credits', 0);
+    update_post_meta($post_id, 'description', '');
+    update_post_meta($post_id, 'votes', 0);
+    update_post_meta($post_id, 'user_votes', []);
+
+    return rest_ensure_response([
+      'success' => true,
+      'id'      => (int) $post_id,
+      'message' => 'Gracias, estamos evaluando tu idea.',
+    ]);
+  }
+}
+
+if (!function_exists('sc_vote_improvement')) {
+  function sc_vote_improvement(WP_REST_Request $request) {
+    $post_id = absint($request->get_param('id'));
+    $user_id = absint($request->get_param('user_id'));
+    $current_user_id = get_current_user_id();
+
+    if ($current_user_id > 0 && $user_id > 0 && $current_user_id !== $user_id) {
+      return new WP_Error(
+        'smartcards_vote_user_mismatch',
+        'No puedes votar con otro usuario.',
+        ['status' => 403]
+      );
+    }
+
+    if ($user_id <= 0) {
+      $user_id = absint($current_user_id);
+    }
+
+    if ($post_id <= 0 || $user_id <= 0) {
+      return new WP_Error(
+        'smartcards_invalid_vote',
+        'Faltan datos para registrar el voto.',
+        ['status' => 400]
+      );
+    }
+
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== 'sc_improvement' || $post->post_status !== 'publish') {
+      return new WP_Error(
+        'smartcards_improvement_not_found',
+        'La mejora no está disponible para votar.',
+        ['status' => 404]
+      );
+    }
+
+    $user_votes = sc_normalize_improvement_user_votes(get_post_meta($post_id, 'user_votes', true));
+    $votes = absint(get_post_meta($post_id, 'votes', true));
+
+    if (in_array($user_id, $user_votes, true)) {
+      return new WP_Error(
+        'smartcards_already_voted',
+        'Ya votaste por esta idea.',
+        [
+          'status' => 409,
+          'votes'  => $votes,
+        ]
+      );
+    }
+
+    $user_votes[] = $user_id;
+    $votes = max($votes + 1, count($user_votes));
+
+    update_post_meta($post_id, 'user_votes', $user_votes);
+    update_post_meta($post_id, 'votes', $votes);
+
+    return rest_ensure_response([
+      'success' => true,
+      'id'      => $post_id,
+      'votes'   => $votes,
+      'voted'   => true,
+    ]);
+  }
+}
+
+if (!function_exists('sc_add_improvement_votes_column')) {
+  function sc_add_improvement_votes_column($columns) {
+    $next_columns = [];
+
+    foreach ($columns as $key => $label) {
+      if ($key === 'date') {
+        $next_columns['votes'] = 'Votos';
+      }
+
+      $next_columns[$key] = $label;
+    }
+
+    if (!isset($next_columns['votes'])) {
+      $next_columns['votes'] = 'Votos';
+    }
+
+    return $next_columns;
+  }
+}
+
+add_filter('manage_sc_improvement_posts_columns', 'sc_add_improvement_votes_column');
+
+if (!function_exists('sc_render_improvement_votes_column')) {
+  function sc_render_improvement_votes_column($column, $post_id) {
+    if ($column === 'votes') {
+      echo esc_html(absint(get_post_meta($post_id, 'votes', true)));
+    }
+  }
+}
+
+add_action('manage_sc_improvement_posts_custom_column', 'sc_render_improvement_votes_column', 10, 2);
+
+if (!function_exists('sc_make_improvement_votes_column_sortable')) {
+  function sc_make_improvement_votes_column_sortable($columns) {
+    $columns['votes'] = 'votes';
+
+    return $columns;
+  }
+}
+
+add_filter('manage_edit-sc_improvement_sortable_columns', 'sc_make_improvement_votes_column_sortable');
+
+if (!function_exists('sc_sort_improvement_admin_by_votes')) {
+  function sc_sort_improvement_admin_by_votes($query) {
+    if (!is_admin() || !$query->is_main_query()) {
+      return;
+    }
+
+    if ($query->get('post_type') !== 'sc_improvement' || $query->get('orderby') !== 'votes') {
+      return;
+    }
+
+    $query->set('meta_key', 'votes');
+    $query->set('orderby', 'meta_value_num');
+  }
+}
+
+add_action('pre_get_posts', 'sc_sort_improvement_admin_by_votes');
