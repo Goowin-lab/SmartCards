@@ -3,7 +3,7 @@
  * Plugin Name: SmartCards
  * Plugin URI: https://goowin.co
  * Description: Formulario para generar archivos VCF, crea el perfil de contacto con la foto de la portada, foto del perfil, botón de guardar contacto, redes sociales, QR Dinámico y aprobación de perfil, optimización Créditos Smart Cards, notificaciones a los editores, Mis smart cards. Productos en el dashboard, mis smarts cards, ajustes, in-app purchases.
- * Version: 3.0.51
+ * Version: 3.0.52
  * Author: Goowin
  * Author URI: https://goowin.co
  * Text Domain: smartcards
@@ -486,6 +486,9 @@ require_once SMARTCARDS_PLUGIN_DIR . 'includes/otp-endpoints.php';
 
 // Endpoint /smartcards/v1/me — devuelve datos del usuario autenticado via JWT
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest-me.php';
+
+// Endpoints de cuenta móvil: actualizar perfil y eliminar cuenta
+require_once SMARTCARDS_PLUGIN_DIR . 'includes/rest/account.php';
 
 // Endpoint /smartcards/v1/messages y panel "Mensajes App"
 require_once SMARTCARDS_PLUGIN_DIR . 'includes/app-messages.php';

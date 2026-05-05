@@ -35,6 +35,18 @@ class SC_REST_Me {
     $credits = (int) get_user_meta( $user->ID, 'smartcards_credits', true );
     $qr_logo_enabled = (bool) get_user_meta( $user->ID, 'qr_logo_enabled', true );
     $has_shared = (bool) get_user_meta( $user->ID, 'sc_has_shared', true );
+    $first_name = trim( (string) get_user_meta( $user->ID, 'first_name', true ) );
+    $last_name = trim( (string) get_user_meta( $user->ID, 'last_name', true ) );
+    $avatar_url = self::get_account_avatar_url( $user->ID );
+
+    if ( '' === $first_name ) {
+        $first_name = trim( (string) get_user_meta( $user->ID, 'smartcards_nombre', true ) );
+    }
+
+    if ( '' === $last_name ) {
+        $last_name = trim( (string) get_user_meta( $user->ID, 'smartcards_apellido', true ) );
+    }
+
     $latest_profile_id = self::get_latest_profile_id( $user->ID );
     $has_legacy_profile = self::user_has_legacy_profile( $user->ID );
     $has_profile = $latest_profile_id > 0 || $has_legacy_profile;
@@ -47,6 +59,10 @@ class SC_REST_Me {
         'email'        => $user->user_email,
         'display_name' => $user->display_name,
         'name'         => $user->display_name,
+        'first_name'   => $first_name,
+        'last_name'    => $last_name,
+        'avatar'       => $avatar_url,
+        'avatar_url'   => $avatar_url,
         'credits'      => $credits,
         'qr_logo_enabled' => $qr_logo_enabled,
         'has_profile'  => $has_profile,
@@ -54,6 +70,24 @@ class SC_REST_Me {
         'has_shared' => $has_shared,
         'latest_profile_id' => $latest_profile_id,
     ];
+  }
+
+  private static function get_account_avatar_url( $user_id ) {
+    $avatar_id = (int) get_user_meta( $user_id, 'smartcards_avatar_id', true );
+
+    if ( $avatar_id <= 0 ) {
+        $avatar_id = (int) get_user_meta( $user_id, 'smartcards_foto_perfil_id', true );
+    }
+
+    if ( $avatar_id > 0 ) {
+        $url = wp_get_attachment_url( $avatar_id );
+
+        if ( $url ) {
+            return (string) $url;
+        }
+    }
+
+    return (string) get_user_meta( $user_id, 'smartcards_avatar_url', true );
   }
 
   private static function get_latest_profile_id( $user_id ) {
